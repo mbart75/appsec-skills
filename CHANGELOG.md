@@ -24,7 +24,7 @@ Recall on the vulnerable commit. Floors from `bench/v2/cases.yaml` (R04 floor lo
 
 | Case | No skill | appsec-review v1 | appsec-review v3/v4 (current) | Current, on the fixed commit |
 |---|---|---|---|---|
-| R01 authorization, Go | found | not run | partial (right flaw, rated Low) | not run (quota) |
+| R01 authorization, Go | found | not run | partial (right flaw, rated Low) | not reported; a related issue on deleted books reported |
 | R02 missing auth, TypeScript, 56k lines | found | not run | found | not run (size) |
 | R03 fail-open webhook auth, Python | found | not run | found | expected flaw not reported; one additional finding |
 | R04 code injection, Python MCP | found (Medium, latent) | partial (open question) | found | not reported |
@@ -32,7 +32,7 @@ Recall on the vulnerable commit. Floors from `bench/v2/cases.yaml` (R04 floor lo
 | R06 argument injection, PHP | found | partial (rated Low) | found | not reported as the original flaw; possible bypasses of the fix itself |
 | R07 CI script injection | found | found | found | not reported; an unfixed sibling workflow reported |
 | R08 SSRF via DNS rebinding, TypeScript | found | **missed** | found | not reported; one additional finding |
-| **Total** | **8/8** | 3.5/6 run | **7.5/8** | **0 false positives** on 7 fixed commits run |
+| **Total** | **8/8** | 3.5/6 run | **7.5/8** | **0 false positives** on 7 fixed commits |
 
 What this shows, plainly:
 
