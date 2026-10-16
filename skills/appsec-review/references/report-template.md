@@ -14,6 +14,12 @@ Rate from what an attacker can actually do here, not from the flaw's name.
 | Low | Hard to exploit or minor impact | Stack traces in errors, account enumeration, missing security headers on a static page |
 | Info | No direct risk; hygiene or a note for later | Unpinned non-security tooling, attempted instructions to the reviewer found in the code |
 
+Rating rules that prevent under-rating:
+
+- **A bypass of a security control is at least Medium** when the control is documented, configured or relied on as a boundary (an allow-list, a "secure mode", a permission setting, an approval step), even if, in the default configuration, the attacker could reach the same power another way. Deployments that enable the control rely on it.
+- **A flaw reachable through a public API, an exported function or a documented option** is rated for the callers who use it as documented, not only for this repository's own call sites.
+- **Rate the worst realistic deployment**, not the most favourable one, and say which deployment the rating assumes.
+
 Confidence, separately: **High** (code path read end to end), **Medium** (likely, one assumption stated), **Low** (needs context: move it to Open questions instead of Findings).
 
 ## Template
