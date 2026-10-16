@@ -20,7 +20,17 @@ An injection exists when attacker-controlled data reaches an interpreter without
 
 ## Server-side request forgery
 
-Any feature that fetches a URL chosen by a user (link previews, webhooks, imports, image proxies, PDF renderers) can reach internal services and cloud metadata (`169.254.169.254`). Expected: allow-list of hosts, HTTPS only, no redirects followed to new hosts, block private and link-local ranges after DNS resolution, timeouts and size limits. A deny-list alone is a weak finding, not a fix.
+Any feature that fetches a URL chosen by a user (link previews, webhooks, imports, image proxies, PDF renderers, OAuth and JWKS discovery URLs) can reach internal services and cloud metadata (`169.254.169.254`). Expected: allow-list of hosts, HTTPS only, timeouts and size limits, and every one of these checks applied correctly:
+
+| Check | Bypass when it is done wrong |
+|---|---|
+| The address is validated **and the connection goes to that same address** | Validating the result of one DNS lookup, then letting the HTTP client resolve the name again, is a time-of-check to time-of-use gap: a DNS rebinding server answers a public IP to the check and an internal IP to the connection. The fix pins the validated IP (custom `lookup`/agent, or connect by IP with the original `Host` header and SNI) |
+| Every resolved address is checked, not only the first | A name with several A/AAAA records passes on the first and connects to another |
+| Each redirect hop is re-validated | A public URL redirects to an internal one; `redirect: 'follow'` never shows it to the check |
+| The deny-list is complete | `0.0.0.0/8`, `::`, IPv4-mapped IPv6 (`::ffff:127.0.0.1`), `fc00::/7`, `fe80::/10`, decimal and octal IPv4 forms, `localhost` subdomains |
+| The protection is on by default | An opt-in safety option that callers forget to set |
+
+A deny-list alone is a weak finding, not a fix. When the code has an SSRF defence, test each row against it: the defence existing is where the interesting flaws start.
 
 ## Files
 

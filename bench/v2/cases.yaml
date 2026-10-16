@@ -1,0 +1,121 @@
+# Bench v2: real vulnerabilities from published GitHub Security Advisories.
+#
+# Each case is a small open-source project at the commit just before the fix
+# (vulnerable) and at the fix commit (fixed). The advisory is the answer key,
+# written by third parties. bench/v2/setup.sh fetches a case and builds a blind
+# copy without git history, so the reviewer cannot read the future fix.
+#
+# Selection (2026-10-16): advisories published 2026-06-15..2026-10-15, application-level
+# flaws (not parser internals), repositories under 4 MB, fix commits small enough to
+# locate the flaw precisely. Recent advisories reduce the chance that a model memorised them.
+#
+# Fields
+#   expected   one or more flaws; each must be reported at the location, with the root cause
+#   severity_min  lowest acceptable rating
+#   fixed variant: the expected flaws must NOT be reported there (each one reported = false positive)
+
+cases:
+  - id: R01
+    advisory: GHSA-588f-fvcv-xhvf
+    repo: enchant97/note-mark
+    vulnerable: 67b7de04308a858ef27ceff87b514067b6d667e5
+    fixed: 9c9b72740f22a06131a8f64b53bb08e3b05b81a6
+    stack: Go API + TypeScript front-end
+    expected:
+      - location: backend/services/notes.go, GetNotesByBookID
+        root_cause: With deleted=true the query runs Unscoped() but keeps the "owner_id = ? OR is_public = ?" read clause, so anyone, including unauthenticated callers, lists soft-deleted notes of any public book.
+        cwe: CWE-285
+        severity_min: Medium
+
+  - id: R02
+    advisory: GHSA-mxjx-28vx-xjjj
+    repo: Jovancoding/Network-AI
+    vulnerable: 344fb17362e873eefcdacb83415dbb3487bd1841
+    fixed: a59c13a1f0ce0e8a0779a90343eef92fac5ab4c3
+    stack: TypeScript multi-agent framework
+    expected:
+      - location: lib/approval-inbox.ts, HTTP handler and server start
+        root_cause: The human-approval inbox HTTP server has no authentication and sends Access-Control-Allow-Origin "*", so any local process or any website the operator visits can list and approve pending high-risk agent actions.
+        cwe: CWE-862
+        severity_min: High
+
+  - id: R03
+    advisory: GHSA-3fcr-jvgp-7f58
+    repo: nessshon/tonapi
+    vulnerable: e46c4a4b907cbb1f290ef73af299b5020ec9de71
+    fixed: 854222b7ee68d3fb7b4d6d899d200f388483bd86
+    stack: Python SDK with webhook dispatcher
+    expected:
+      - location: pytonapi/webhook/dispatcher.py, token map and request handling
+        root_cause: Tokens are stored only for default webhook paths; for a handler registered with a custom path the token lookup returns None and the "if expected_token is not None" guard skips authentication (fail-open), so forged webhooks are accepted.
+        cwe: CWE-287
+        severity_min: High
+
+  - id: R04
+    advisory: GHSA-mw6r-2hvm-4rp2
+    repo: QWED-AI/qwed-mcp
+    vulnerable: 54ac682699407310b5a71fbaed8c33f581b84301
+    fixed: 362e61892052e250c56cb1ee852024d6f98c467b
+    stack: Python MCP server (tools called by an LLM)
+    expected:
+      - location: src/qwed_mcp/engines/math_engine.py, verify_math_expression
+        root_cause: verify_math_expression() passes caller strings to SymPy parse_expr(), which evaluates Python, without a restricted global_dict or AST validation, so whoever controls the expression executes arbitrary code.
+        cwe: CWE-94
+        severity_min: Medium
+        note: At this commit the function is part of the package API but no MCP tool calls it (checked on 2026-10-16), so "latent" with Medium is correct; the advisory rates the package function. Floor lowered from High after verification.
+
+  - id: R05
+    advisory: GHSA-3x77-wg38-92r3, GHSA-74hp-mggr-hv58, GHSA-f5pj-2738-996m
+    repo: sonirico/mcp-shell
+    vulnerable: ae3ed10e6f580ae6a3ae997b7d78bba75552110d
+    fixed: f31377fce6ec31114e5a4398c0e5270552bce09f
+    stack: Go MCP server exposing shell execution to an LLM
+    expected:
+      - location: security.go (executable allow-list check) and security.yaml
+        root_cause: Only the first token is checked against the allow-list, and the shipped list contains /bin/bash, so "/bin/bash -c <anything>" runs any command.
+        cwe: CWE-78
+        severity_min: High
+      - location: security.go (metacharacter filter) and security.yaml
+        root_cause: The filter omits "!", and git is allow-listed, so "git -c alias.x=!<command>" runs any command.
+        cwe: CWE-78
+        severity_min: High
+      - location: config.go, default configuration
+        root_cause: Security is disabled by default (Enabled false), so a bare binary executes any command the model sends.
+        cwe: CWE-1188
+        severity_min: Medium
+
+  - id: R06
+    advisory: GHSA-g3hq-hphg-8fhh
+    repo: pheditor/pheditor
+    vulnerable: a64eb935ce699e43f1ea60e46d47f33e2f87ffd6
+    fixed: f40f5070d5a171b65359bc87568734d31de498e1
+    stack: PHP single-file web file editor with a terminal
+    expected:
+      - location: pheditor.php, terminal action (TERMINAL_COMMANDS allow-list)
+        root_cause: The terminal allow-list is a prefix match without argument validation and includes binaries whose options execute commands (find -exec, git, php, tar, grep), so allowed commands escape the restriction (argument injection).
+        cwe: CWE-88
+        severity_min: Medium
+
+  - id: R07
+    advisory: GHSA-c3xh-98xp-6qhf
+    repo: gouef/githubtoplanguages
+    vulnerable: 5aaf90fbe97dbc2473acf60ef2a46f21a9fea263
+    fixed: 157840482e592bd4f8e0617539e73cdbef26f1ac
+    stack: GitHub Actions workflow in a Go project
+    expected:
+      - location: .github/workflows/discord-issue.yml
+        root_cause: The issue or PR title is interpolated with ${{ }} directly into a bash run step, so anyone opening an issue runs commands in the workflow and can exfiltrate the Discord webhook secret.
+        cwe: CWE-78
+        severity_min: High
+
+  - id: R08
+    advisory: GHSA-cpjf-6666-r8fx
+    repo: OP-Engineering/link-preview-js
+    vulnerable: 9b78733aaa06e4da5dce65a499cd7c45983331b0
+    fixed: 6ee25043dd60b097eb70b4ce049aac94b28239e3
+    stack: TypeScript library used server-side for link previews
+    expected:
+      - location: index.ts, resolveDNSHost handling before fetch
+        root_cause: The SSRF mitigation validates the IP returned by resolveDNSHost, then fetch() connects to the original hostname, which is resolved again; a DNS rebinding attacker passes the check with a public IP and connects to an internal one (time-of-check to time-of-use).
+        cwe: CWE-918
+        severity_min: Medium

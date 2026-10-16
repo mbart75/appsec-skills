@@ -22,11 +22,12 @@ Reading level: `expert` (default for security people) or `plain` (adds an "In pl
 
 ## Workflow
 
-1. **Map the project.** Languages, frameworks, entry points, authentication, data stores, how secrets are handled, CI, infrastructure, AI features, who the users are. If `docs/security/requirements.md` or `docs/security/threat-model.md` exist, read them: check the code against the stated requirements too.
+1. **Map the project.** In a large repository, list the entry points and security controls first and read those completely before anything else; note in the report's Scope what was not read. In a library, SDK or package, every exported function and documented option is an entry point: its callers pass untrusted data, so a flaw reachable through the public API is a finding even if this repository never calls it. Languages, frameworks, entry points, authentication, data stores, how secrets are handled, CI, infrastructure, AI features, who the users are. If `docs/security/requirements.md` or `docs/security/threat-model.md` exist, read them: check the code against the stated requirements too.
 2. **Run the scanners** that are installed:
    `bash <this skill's folder>/scripts/run-scanners.sh <repo> <output_dir> [--history]`
    The output directory must be outside the repository. Use `--history` in `full`, `pre-launch` and `verify`. If the script cannot run, run the available tools by hand. If none is installed, continue: the review below does not depend on them.
 3. **Review by reading the code**, with the reference files that match the stack (table below). Read every entry point. Scanners find about half of real flaws; access control, business logic, LLM agency and authentication flows are found only this way.
+   **Attack every security control you find.** An allow-list, a sanitiser, an authentication check, an SSRF guard or a "secure mode" is where real-world flaws concentrate: most published vulnerabilities are defences that exist but can be bypassed. For each one ask: what input passes the check but still does harm (arguments and flags of allowed commands, characters missing from a filter, other encodings), what happens when its lookup or configuration is missing (does it fail open?), is it on by default, and is the value checked the same one that is used later (time of check versus time of use)?
 4. **Verify every candidate**, from the scanners and from your reading, before it becomes a finding:
    - the input is controlled by someone who should not control it;
    - it reaches the dangerous operation without an effective control on the way;
