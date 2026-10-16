@@ -294,9 +294,10 @@ flaws:
     anchor: "Invoke-Expression"
     cwe: CWE-95
     ref: CWE Top 25
-    severity_min: Medium
+    severity_min: Low
     scanners: [psscriptanalyzer]
     modes: [diff, full]
+    note: Low is acceptable when the review argues the value is set by the operator or a fixed CI variable, not by an outsider (consistent with references/bash.md and powershell.md). Changed from Medium on 2026-10-16.
 
   - id: V29
     title: Service account password hard-coded in the script
@@ -334,9 +335,10 @@ flaws:
     anchor: "rm -rf $DEPLOY_TARGET/*"
     cwe: CWE-20
     ref: ShellCheck SC2115
-    severity_min: Medium
+    severity_min: Low
     scanners: [shellcheck]
     modes: [diff, full]
+    note: Low is acceptable when the review argues the value is set by the operator or a fixed CI variable, not by an outsider (consistent with references/bash.md and powershell.md). Changed from Medium on 2026-10-16.
 
   - id: V33
     title: Unsafe YAML loading of user-uploaded sidecar files
@@ -379,6 +381,18 @@ flaws:
     scanners: [review]
     modes: [diff, full, pre-launch]
     note: Found by the baseline run of 2026-10-16 on secure-app, where it had been left unfixed.
+
+  - id: V37
+    title: One malformed upload stops thumbnail generation for every user
+    file: worker/thumbnail.py
+    anchor: "            make_thumbnail(image)"
+    same_in_secure: "true"
+    cwe: CWE-755
+    ref: OWASP A10:2025
+    severity_min: Low
+    scanners: [review]
+    modes: [full]
+    note: Found by the appsec-review run of 2026-10-16 on secure-app, where it had been left unfixed. In secure-app the call is now inside try/except.
 
 # For bench/secure-app. Reporting any of these as a vulnerability is a false positive.
 secure_app_traps:

@@ -37,7 +37,11 @@ def main() -> None:
     THUMBS.mkdir(exist_ok=True)
     for image in UPLOADS.iterdir():
         if image.is_file() and image.suffix.lower() in FORMATS:
-            make_thumbnail(image)
+            # One broken upload must not stop thumbnails for everyone else.
+            try:
+                make_thumbnail(image)
+            except (subprocess.SubprocessError, OSError, yaml.YAMLError) as error:
+                print(f"thumbnail failed for {image.name}: {error}")
 
 
 if __name__ == "__main__":

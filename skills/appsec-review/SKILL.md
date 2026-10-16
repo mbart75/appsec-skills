@@ -31,7 +31,15 @@ Reading level: `expert` (default for security people) or `plain` (adds an "In pl
    - the input is controlled by someone who should not control it;
    - it reaches the dangerous operation without an effective control on the way;
    - you can write the attacker's concrete request or action and its outcome.
-   If all three hold, it is a finding with a confidence. If one is uncertain, it goes to **Open questions** with what would decide it. If one is false, it is not a finding: list scanner hits you rejected, with the reason, in the appendix.
+   Then sort it into exactly one place:
+
+   | Result of the check | Goes to |
+   |---|---|
+   | All three hold, and something in this code should change | **Findings**, with a confidence |
+   | One of the three is uncertain | **Open questions**, with what would decide it |
+   | Safe as it is: public by design, expected, already mitigated, or only dangerous if the code changed in some hypothetical way | **Not a finding.** Scanner hits go to the appendix with the reason; good practices go to "What is already done well" |
+
+   The report is a work order: whoever executes it will change every finding. Anything listed under Findings must deserve a change.
 5. **Rate** with the scale in `references/report-template.md`, from what an attacker can actually do here.
 6. **Write the report** following `references/report-template.md` exactly: every section, in order, every slot of every finding filled. Default location: outside the repository (the same folder as scanner outputs, or one the user names). Then give the user the verdict, the counts and the report path.
 
