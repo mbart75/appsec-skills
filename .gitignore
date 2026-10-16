@@ -1,0 +1,43 @@
+# Secrets: never commit
+.env
+.env.local
+*.pem
+*.key
+*.crt
+*.p12
+
+# Security reports: a list of weaknesses is an attack map, keep it out of git
+.security/
+appsec-report*.md
+*-sarif.json
+*.sarif
+
+# Local agent tooling and session artifacts
+.claude/
+
+# Personal working notes (they live outside this repository)
+Transmission.md
+transmissions/
+NOTES-ENTRETIEN.md
+blueprint*.md
+
+# Build output
+dist/
+build/
+node_modules/
+__pycache__/
+.venv/
+graphify-out/
+
+# Logs and data
+*.log
+logs/
+*.sql.gz
+backups/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

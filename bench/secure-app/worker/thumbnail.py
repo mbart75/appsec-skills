@@ -1,0 +1,44 @@
+"""Creates thumbnails for uploaded images. Run every minute by cron."""
+import re
+import subprocess
+from pathlib import Path
+
+import yaml
+
+UPLOADS = Path(__file__).resolve().parent.parent / "uploads"
+THUMBS = UPLOADS / "thumbs"
+FORMATS = {".png": "png", ".jpg": "jpeg", ".jpeg": "jpeg"}
+SIZE = re.compile(r"\d{2,4}x\d{2,4}")
+
+
+def load_options(image: Path) -> dict:
+    """Reads optional per-image settings, keeping only values that pass validation."""
+    options = {"size": "200x200"}
+    sidecar = image.with_suffix(".yml")
+    if sidecar.exists():
+        loaded = yaml.safe_load(sidecar.read_text()) or {}
+        if isinstance(loaded, dict) and SIZE.fullmatch(str(loaded.get("size", ""))):
+            options["size"] = loaded["size"]
+    return options
+
+
+def make_thumbnail(image: Path) -> None:
+    options = load_options(image)
+    fmt = FORMATS[image.suffix.lower()]
+    # Argument list, no shell. The explicit format prefix stops ImageMagick from guessing a decoder.
+    subprocess.run(
+        ["convert", f"{fmt}:{image}", "-resize", options["size"], str(THUMBS / image.name)],
+        check=True,
+        timeout=30,
+    )
+
+
+def main() -> None:
+    THUMBS.mkdir(exist_ok=True)
+    for image in UPLOADS.iterdir():
+        if image.is_file() and image.suffix.lower() in FORMATS:
+            make_thumbnail(image)
+
+
+if __name__ == "__main__":
+    main()

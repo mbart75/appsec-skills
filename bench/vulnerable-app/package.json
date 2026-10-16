@@ -1,0 +1,14 @@
+{
+  "name": "tinyshop",
+  "version": "0.3.0",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "*",
+    "pg": "latest"
+  }
+}

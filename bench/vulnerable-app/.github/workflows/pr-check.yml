@@ -1,0 +1,30 @@
+name: PR check
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+
+permissions: write-all
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: tinyshop-tools/setup-node-cache@main
+
+      - name: Announce
+        run: echo "Testing PR: ${{ github.event.pull_request.title }}"
+
+      - name: Test
+        run: npm install && npm test
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+
+      - name: Deploy preview
+        run: ./scripts/deploy.sh dist "${{ github.head_ref }}"
+        env:
+          DEPLOY_TARGET: /srv/tinyshop/previews

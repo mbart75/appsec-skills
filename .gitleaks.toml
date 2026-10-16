@@ -1,0 +1,8 @@
+# The test bench contains fake secrets on purpose (seeded flaws).
+# They are excluded here so this repository's own scans stay meaningful.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Seeded fake secrets of the test bench"
+paths = ['''^bench/''']
