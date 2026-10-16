@@ -26,7 +26,7 @@ router.post('/:id/reviews', requireUser, async (req, res) => {
   }
   await db.query('INSERT INTO reviews (product_id, author, body) VALUES ($1, $2, $3)', [
     req.params.id,
-    req.user.email,
+    req.user.display_name,
     body,
   ]);
   res.status(201).end();

@@ -1,6 +1,7 @@
 create table public.users (
   id uuid primary key default gen_random_uuid(),
   email text unique not null,
+  display_name text not null default 'Customer' check (length(display_name) <= 40),
   password_hash text not null,
   role text not null default 'customer' check (role in ('customer', 'staff', 'admin')),
   reset_token_hash text,

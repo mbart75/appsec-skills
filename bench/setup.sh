@@ -41,6 +41,8 @@ ENV
 fi
 
 cp -R "$here/${variant}-app/." .
+# Leftovers from local runs are not part of the application.
+find . \( -name __pycache__ -o -name node_modules -o -name .DS_Store \) -prune -exec rm -rf {} +
 git add -A
 git commit -q -m "TinyShop 0.3.0"
 echo "$dest"

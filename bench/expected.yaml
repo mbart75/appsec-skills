@@ -6,9 +6,11 @@
 #   same_in_secure  "true" when the flaw is an absence, so the anchor line legitimately exists in both variants
 #   cwe / ref     classification
 #   severity_min  lowest acceptable rating (Critical > High > Medium > Low > Info)
-#   scanners      tools expected to catch it; "review" means only reasoning finds it.
-#                 Verified on 2026-10-16: gitleaks 8.30, ShellCheck, PSScriptAnalyzer 1.25, Checkov 3.3, Trivy 0.72.
-#                 Semgrep, Bandit, zizmor and TruffleHog are expectations until a run confirms them.
+#   scanners      tools that caught it in a real run; "review" means only reasoning finds it.
+#                 Measured on 2026-10-16 with skills/appsec-review/scripts/run-scanners.sh --history:
+#                 gitleaks 8.30, TruffleHog 3.99, Semgrep 1.181 (p/default), Bandit 1.9, ShellCheck,
+#                 PSScriptAnalyzer 1.25, OSV-Scanner 2.7, Checkov 3.3, Trivy 0.72, zizmor 1.31.
+#                 Result: 16 of 35 flaws caught by at least one scanner, 19 need reasoning.
 #   modes         review modes expected to find it (diff covers a review of the full tree as one change)
 
 flaws:
@@ -19,7 +21,7 @@ flaws:
     cwe: CWE-89
     ref: OWASP A05:2025
     severity_min: High
-    scanners: [semgrep]
+    scanners: [review]
     modes: [diff, full]
 
   - id: V02
@@ -40,7 +42,7 @@ flaws:
     cwe: CWE-918
     ref: OWASP A01:2025
     severity_min: High
-    scanners: [semgrep]
+    scanners: [review]
     modes: [diff, full]
 
   - id: V04
@@ -70,7 +72,7 @@ flaws:
     cwe: CWE-79
     ref: OWASP A05:2025
     severity_min: Medium
-    scanners: [semgrep]
+    scanners: [review]
     modes: [diff, full, pre-launch]
 
   - id: V07
@@ -110,7 +112,7 @@ flaws:
     cwe: CWE-1004
     ref: OWASP A07:2025
     severity_min: Low
-    scanners: [semgrep]
+    scanners: [review]
     modes: [diff, full, pre-launch]
 
   - id: V11
@@ -181,7 +183,7 @@ flaws:
     cwe: CWE-798
     ref: OWASP A02:2025
     severity_min: Critical
-    scanners: [gitleaks, trufflehog]
+    scanners: [gitleaks, semgrep]
     modes: [diff, full, pre-launch]
     note: Rating it Critical requires decoding the JWT role (service_role bypasses row-level security).
 
@@ -239,11 +241,11 @@ flaws:
   - id: V23
     title: Script injection from PR title and branch name in run steps
     file: .github/workflows/pr-check.yml
-    anchor: 'run: echo "Testing PR: ${{ github.event.pull_request.title }}"'
+    anchor: 'run: echo "Testing PR ${{ github.event.pull_request.title }}"'
     cwe: CWE-78
     ref: OWASP A03:2025
     severity_min: High
-    scanners: [zizmor]
+    scanners: [zizmor, semgrep, checkov]
     modes: [diff, full]
 
   - id: V24
@@ -253,7 +255,7 @@ flaws:
     cwe: CWE-250
     ref: OWASP A03:2025
     severity_min: Low
-    scanners: [zizmor]
+    scanners: [zizmor, semgrep]
     modes: [diff, full]
 
   - id: V25
@@ -343,7 +345,7 @@ flaws:
     cwe: CWE-502
     ref: OWASP A08:2025
     severity_min: High
-    scanners: [semgrep, bandit]
+    scanners: [bandit, semgrep]
     modes: [diff, full]
 
   - id: V34
@@ -353,7 +355,7 @@ flaws:
     cwe: CWE-78
     ref: OWASP A05:2025
     severity_min: High
-    scanners: [semgrep, bandit]
+    scanners: [bandit, semgrep]
     modes: [diff, full]
 
   - id: V35
@@ -366,6 +368,17 @@ flaws:
     scanners: [gitleaks, trufflehog]
     modes: [full]
     note: Pass requires the advice to rotate both secrets, not only to rewrite history.
+
+  - id: V36
+    title: Review author e-mail addresses published by an unauthenticated endpoint
+    file: server/routes/products.js
+    anchor: "req.user.email,"
+    cwe: CWE-359
+    ref: OWASP A01:2025, GDPR art. 5(1)(c)
+    severity_min: Low
+    scanners: [review]
+    modes: [diff, full, pre-launch]
+    note: Found by the baseline run of 2026-10-16 on secure-app, where it had been left unfixed.
 
 # For bench/secure-app. Reporting any of these as a vulnerability is a false positive.
 secure_app_traps:
@@ -401,3 +414,12 @@ secure_app_accepted:
   - S3 access logging or customer-managed KMS key.
   - server/payments.js no longer used.
   - Link preview reads the whole response before truncating it.
+  - Response timing on /forgot-password differs when the account exists (mail sent).
+  - Session ids stored in clear in the sessions table.
+  - No e-mail ownership verification at registration.
+  - Database TLS not enforced in the connection string handling.
+  - API connects with the table-owner role (bypasses RLS by design; checks are in the API).
+  - No per-user quota on reviews and uploads.
+  - ImageMagick policy hardening for the worker.
+  - Remaining indirect prompt-injection risk from reviews (mitigated, not eliminated).
+  - Front-end vendor library not committed (fixture limitation).

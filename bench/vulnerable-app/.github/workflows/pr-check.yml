@@ -17,7 +17,7 @@ jobs:
       - uses: tinyshop-tools/setup-node-cache@main
 
       - name: Announce
-        run: echo "Testing PR: ${{ github.event.pull_request.title }}"
+        run: echo "Testing PR ${{ github.event.pull_request.title }}"
 
       - name: Test
         run: npm install && npm test

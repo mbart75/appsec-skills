@@ -4,7 +4,7 @@ async function currentUser(req, res, next) {
   const sid = req.cookies.sid;
   if (sid) {
     const { rows } = await db.query(
-      'SELECT u.id, u.email, u.role FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = $1 AND s.expires_at > now()',
+      'SELECT u.id, u.email, u.display_name, u.role FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = $1 AND s.expires_at > now()',
       [sid]
     );
     req.user = rows[0];

@@ -20,7 +20,7 @@ jobs:
           node-version: 22
 
       - name: Announce
-        run: echo "Testing PR: ${PR_TITLE}"
+        run: echo "Testing PR ${PR_TITLE}"
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
 
