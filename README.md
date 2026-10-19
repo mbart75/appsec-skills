@@ -63,7 +63,14 @@ Non-interactive: `./install.sh --agents claude,codex --yes` (or `--all-detected`
 | OpenCode | `~/.config/opencode/skills/` |
 | Other agents | any folder, with `--dir` |
 
-Agents without skills support can read [`AGENTS.md`](AGENTS.md). For a chat assistant (ChatGPT, Claude.ai, Gemini), attach the matching `appsec-<skill>.md` from the release to the conversation. For Claude Cowork, install `appsec-skills.plugin`.
+Agents without skills support can read [`AGENTS.md`](AGENTS.md). Elsewhere:
+
+| Where | How |
+|---|---|
+| Chat assistant (ChatGPT, Claude.ai, Gemini) | Attach the matching `appsec-<skill>.md` from the release to the conversation, with the code. No scanner runs in a chat; the report says so |
+| Lovable | Settings → Skills → Add → *Upload ZIP* with `appsec-<skill>.zip` from the release, or *Import from GitHub* with the skill's folder URL, such as `https://github.com/mbart75/appsec-skills/tree/main/skills/appsec-review` |
+| Builders without skills (Bolt, v0) | Project instructions are too short for a skill (Lovable's limit is 10,000 characters; `appsec-review.md` is about 80,000). Review the code with a coding agent or a chat assistant instead |
+| Claude Cowork | Install `appsec-skills.plugin` |
 
 ### Tested with
 
