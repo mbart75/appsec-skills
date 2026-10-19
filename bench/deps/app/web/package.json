@@ -1,0 +1,14 @@
+{
+  "name": "ledgerly-web",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ejs": "3.1.6",
+    "express": "^4.22.3",
+    "lodash": "4.17.15"
+  }
+}

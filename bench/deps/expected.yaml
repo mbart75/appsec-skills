@@ -1,0 +1,34 @@
+# Answer key for bench/deps. Never shown to the reviewing agent.
+# EPSS and KEV values as retrieved on 2026-10-19 (FIRST EPSS API, CISA KEV catalog 2026.10.16); they change over time.
+D-LOG4J:
+  package: org.apache.logging.log4j:log4j-core 2.14.1
+  cves: [CVE-2021-44228, CVE-2021-45046, CVE-2021-45105, CVE-2021-44832]
+  kev: [CVE-2021-44228, CVE-2021-45046]
+  epss: {CVE-2021-44228: 1.0, CVE-2021-45046: 0.9998}
+  reachable: "web/server.js /reports/monthly forwards User-Agent -> ReportServer.monthly logs it with {} (log4j2.xml uses %m, lookups on)"
+  severity_min: Critical
+  fixed_min: "2.17.1 (latest 2.x recommended)"
+D-JQUERY:
+  package: jquery 3.4.1 (vendored, web/public/vendor/jquery-3.4.1.min.js, no manifest)
+  cves: [CVE-2020-11022, CVE-2020-11023]
+  kev: [CVE-2020-11023]
+  epss: {CVE-2020-11022: 0.9921, CVE-2020-11023: 0.8489}
+  reachable: "web/public/app.js passes DOMPurify output to .html(); jQuery < 3.5.0 rewrites sanitized HTML"
+  severity_min: Medium
+  fixed_min: "3.5.0"
+D-EJS:
+  package: ejs 3.1.6
+  cves: [CVE-2022-29078, CVE-2024-33883]
+  kev: []
+  epss: {CVE-2022-29078: 0.3281}
+  reachable: "web/server.js /invoice: res.render('invoice', {...req.query}) lets settings[view options] reach ejs options"
+  severity_min: High
+  fixed_min: "3.1.7 (3.1.10 for CVE-2024-33883)"
+D-LODASH:
+  package: lodash 4.17.15
+  cves: [CVE-2020-8203, CVE-2021-23337, CVE-2020-28500, CVE-2025-13465, CVE-2026-2950, CVE-2026-4800]
+  kev: []
+  epss: {CVE-2021-23337: 0.2133, CVE-2020-28500: 0.0734, CVE-2020-8203: 0.0521}
+  reachable: "no: only _.get is used (server.js); the vulnerable functions are template, zipObjectDeep, trim/toNumber, unset, omit"
+  severity_max: Low
+  fixed_min: "4.17.21 (latest 4.x recommended)"

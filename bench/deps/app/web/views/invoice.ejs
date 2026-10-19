@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Invoice <%= typeof number !== 'undefined' ? number : '' %></title>
+<style>body { margin: <%= margin %>mm; font-family: sans-serif; }</style></head>
+<body>
+  <h1>Invoice <%= typeof number !== 'undefined' ? number : '' %></h1>
+  <p>Customer: <%= typeof customer !== 'undefined' ? customer : '' %></p>
+  <p>Amount: <%= typeof amount !== 'undefined' ? amount : '' %> EUR</p>
+</body>
+</html>
