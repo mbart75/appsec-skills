@@ -2,6 +2,8 @@
 
 ## 0.7.2 (unreleased)
 
+- `appsec-review` workflow: **a finding does not close a file**. Once code holds a finding, it is read again for availability, error handling, data exposure and logic. Bench v1's V37 (one bad upload stops the thumbnail job for everyone, in the same function as two command-execution flaws) was missed by every earlier review (0 of 8) and is now found in 2 of 3 runs. A checklist row for batch jobs had changed nothing and was dropped; see `bench/batch/results.md`.
+
 Security fixes, found by running `appsec-review` on this repository (scanners found nothing in the shipped scripts; all three were found by reading them):
 
 - **`run-scanners.sh`: the reviewed folder's path could inject PowerShell commands** (Medium). The PSScriptAnalyzer step placed the path inside the `pwsh -Command` text. A folder named with a quote and a trailing comment, such as the top folder of an archive supplied by a third party, ran arbitrary PowerShell on the reviewer's machine when `pwsh` and PSScriptAnalyzer were installed. Paths now reach PowerShell through environment variables. Proven with a harmless marker before and after the fix. Update if you review code you did not write and have PSScriptAnalyzer installed.
