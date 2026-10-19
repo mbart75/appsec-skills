@@ -1,0 +1,7 @@
+{
+  "name": "receiptly",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "start": "node server/index.js", "import": "node jobs/import-receipts.js" },
+  "dependencies": { "express": "4.22.3", "pg": "8.16.3" }
+}
