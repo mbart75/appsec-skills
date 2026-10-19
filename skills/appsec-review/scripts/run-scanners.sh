@@ -92,7 +92,11 @@ fi
 
 # --- Static analysis ------------------------------------------------------------
 if have semgrep; then
-  run semgrep semgrep.json semgrep scan --config p/default --metrics=off --json \
+  # Semgrep keeps its log and settings under the home folder, which sandboxed agents
+  # (Codex, for one) cannot write: point it at a folder inside the output directory.
+  mkdir -p "$out/.semgrep-home"
+  run semgrep semgrep.json env XDG_CONFIG_HOME="$out/.semgrep-home" XDG_CACHE_HOME="$out/.semgrep-home" \
+    semgrep scan --config p/default --metrics=off --json \
     --output "$out/semgrep.json" --quiet "$repo"
 elif have opengrep; then
   run opengrep opengrep.json opengrep scan --config p/default --json \
