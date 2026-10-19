@@ -124,8 +124,11 @@ fi
 
 if has_files -name '*.ps1' -o -name '*.psm1'; then
   if have pwsh && pwsh -NoProfile -Command 'if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { exit 1 }' >/dev/null 2>&1; then
-    run psscriptanalyzer psscriptanalyzer.json pwsh -NoProfile -Command \
-      "Invoke-ScriptAnalyzer -Path '$repo' -Recurse | Select-Object RuleName, Severity, ScriptPath, Line, Message | ConvertTo-Json -Depth 3 | Set-Content -Path '$out/psscriptanalyzer.json'"
+    # Paths reach PowerShell through the environment, never inside the command text:
+    # the reviewed folder's name is not trusted and could otherwise inject commands.
+    run psscriptanalyzer psscriptanalyzer.json env APPSEC_SCAN_REPO="$repo" APPSEC_SCAN_OUT="$out/psscriptanalyzer.json" \
+      pwsh -NoProfile -Command \
+      'Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse | Select-Object RuleName, Severity, ScriptPath, Line, Message | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
   else
     missing psscriptanalyzer "Install-Module PSScriptAnalyzer -Scope CurrentUser (PowerShell 7)"
   fi
