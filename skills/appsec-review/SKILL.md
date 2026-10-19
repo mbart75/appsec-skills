@@ -37,7 +37,8 @@ Reading level: `expert` (default for security people) or `plain` (adds an "In pl
    | Result of the check | Goes to |
    |---|---|
    | All three hold, and something in this code should change | **Findings**, with a confidence |
-   | One of the three is uncertain | **Open questions**, with what would decide it |
+   | One of the three is uncertain because a **fact** is missing (configuration, deployment, data you cannot see) | **Open questions**, with what would decide it |
+   | The defect is certain but only exploitable by a trusted operator, or with low impact | **Findings**, rated Low or Info. Low severity is not uncertainty |
    | Safe as it is: public by design, expected, already mitigated, or only dangerous if the code changed in some hypothetical way | **Not a finding.** Scanner hits go to the appendix with the reason; good practices go to "What is already done well" |
 
    The report is a work order: whoever executes it will change every finding. Anything listed under Findings must deserve a change.
