@@ -9,6 +9,9 @@ If your environment loads skills natively, install the folders under `skills/` i
 | The user asks to... | Read |
 |---|---|
 | Review code, a pull request or a repository for security; check if an app is safe to launch or to make public; verify fixes from a security report | `skills/appsec-review/SKILL.md` |
+| Design security before building an app or a feature; write a threat model or security requirements | `skills/appsec-threat-model/SKILL.md` |
+| Fix findings from a security report; harden CI, headers, cookies, repository hygiene | `skills/appsec-harden/SKILL.md` |
+| Check French legal compliance of a site or app; draft mentions légales, privacy notice, CGV | `skills/appsec-compliance-fr/SKILL.md` |
 
 ## Working on this repository
 

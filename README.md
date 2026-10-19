@@ -1,23 +1,21 @@
 # appsec-skills
 
-Security skills for AI coding agents. They make an agent review code the way a security engineer would, and hand back a report that any other AI, or a person, can act on.
+Security skills for AI coding agents: design security in before coding, review code the way a security engineer would, fix findings one proven step at a time, and check French legal requirements before launch. Every output is a document that any other AI, or a person, can pick up.
 
 Works with any agent that reads the open `SKILL.md` format: Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI, OpenCode. Chat assistants get a single-file version.
 
 ## What you get
 
-**`appsec-review`**: a security review in four modes.
+Four skills that cover the life of a project, from design to launch:
 
-| Mode | When |
-|---|---|
-| `diff` | Before a commit or a pull request |
-| `full` | Any time, including the first review of an existing project |
-| `pre-launch` | Before going live: a go/no-go checklist, explained in plain words |
-| `verify` | After fixes: re-checks every finding of a previous report |
+| Skill | When | What it produces |
+|---|---|---|
+| **`appsec-threat-model`** | Before building an app or a feature (security by design) | `docs/security/threat-model.md` and `requirements.md` in the project: trust boundaries, concrete threats, testable requirements, each with how to verify it |
+| **`appsec-review`** | While coding (`diff`), at any time (`full`), before going live (`pre-launch`), after fixes (`verify`) | A verified report written as a **work order**: stable IDs, evidence with secrets redacted, attack scenario, fix, "Done when" check, status |
+| **`appsec-harden`** | To fix a report's findings or apply a baseline (CI, headers, cookies, repository hygiene) | One commit per fix, each proven by a test, scanner or static check; rotations and decisions left explicitly to a person |
+| **`appsec-compliance-fr`** | Before launching a site or app in France | A checklist with sources (mentions légales, RGPD, cookies, consumer law, reviews, AI Act, accessibility) and draft pages in French with placeholders |
 
-The report is a **work order**: stable finding IDs, evidence with secrets redacted, an attack scenario, a fix precise enough to implement, a "Done when" check that proves the fix, and a status per finding. Paste it into any AI assistant to start fixing, then run `verify` with the same file.
-
-Coming next, see [`docs/design.md`](docs/design.md): `appsec-threat-model` (security by design, before code is written), `appsec-harden` (applies fixes and baselines) and `appsec-compliance-fr` (French legal requirements for websites and apps).
+The loop: `appsec-threat-model` writes the requirements, `appsec-review` checks the code against them, `appsec-harden` fixes what the review found, `appsec-review verify` confirms. Any assistant can take over at any step: the documents and the report carry everything it needs.
 
 ## Principles
 
@@ -45,10 +43,20 @@ Copy or link each folder of `skills/` into your agent's skills directory:
 
 ```bash
 git clone https://github.com/mbart75/appsec-skills.git
-ln -s "$PWD/appsec-skills/skills/appsec-review" ~/.claude/skills/appsec-review
+for s in "$PWD"/appsec-skills/skills/*; do ln -s "$s" ~/.claude/skills/; done
 ```
 
-Agents without skills support can read [`AGENTS.md`](AGENTS.md). For a chat assistant, run `bash scripts/build.sh` and attach `dist/appsec-review.md` to the conversation.
+Agents without skills support can read [`AGENTS.md`](AGENTS.md). For a chat assistant (ChatGPT, Claude.ai, Gemini), run `bash scripts/build.sh` and attach the matching `dist/<skill>.md` to the conversation. For Cowork, install `dist/appsec-skills.plugin`.
+
+### Tested with
+
+| Agent | Model | Skills tested |
+|---|---|---|
+| Claude Code | Claude Haiku 5.5, Claude Opus 5.5 | all four |
+| Codex CLI | GPT-6 (low reasoning effort) | `appsec-review`, `appsec-threat-model`, `appsec-compliance-fr` |
+| Chat assistants with the single-file bundle | any | not tested automatically yet |
+
+Results per skill and per model are in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Use
 
@@ -57,6 +65,10 @@ Agents without skills support can read [`AGENTS.md`](AGENTS.md). For a chat assi
 > Is this app ready to launch? Use appsec-review in pre-launch mode, and explain in plain words.
 
 > Here is the security report. Fix the findings, then run appsec-review in verify mode.
+
+> We're adding gift cards. Before we implement it, give us the security requirements.
+
+> We're launching in France next week. Are we legally compliant?
 
 ## Does it work?
 

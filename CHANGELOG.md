@@ -5,6 +5,30 @@
 - `appsec-review`: first version. Modes `diff`, `full`, `pre-launch`, `verify`; report designed as a work order (stable IDs, "Done when", status, hand-off); scanner runner for 11 tools; 16 reference checklists.
 - Test bench: TinyShop with 37 seeded flaws, its fixed counterpart with 7 traps, answer key and scoring procedure.
 
+- `appsec-threat-model`: security by design, project and feature scopes; writes `docs/security/threat-model.md` and `requirements.md`.
+- `appsec-harden`: applies fixes and baselines one proven commit at a time.
+- `appsec-compliance-fr`: French legal checklist with sources and draft pages in French.
+- `appsec-review`: low severity is not uncertainty (a defect only an operator can trigger is a Low finding, not an open question).
+
+## Bench results: appsec-threat-model, appsec-harden, appsec-compliance-fr (2026-10-19)
+
+Rubrics in `bench/threat-model/`, `bench/harden/` and `bench/compliance-fr/` were written and committed before the first run.
+
+| Bench | No skill (Haiku 5.5) | Skill (Haiku 5.5) | Skill in Codex (GPT-6, low effort) |
+|---|---|---|---|
+| Threat model S1, new app | 13/17 | **17/17** | not run |
+| Threat model S2, new feature | 10/12 | **12/12** | about 10.5/12 (codes not stored hashed) |
+| Harden H1, execute a report | 7/8 | **8/8** | not run |
+| Harden H2, harden CI | 7/8 | **8/8** (SHAs independently verified, zizmor 6 → 0) | not run |
+| Compliance F1, launch in France | about 13.5/14 | about 13.5/14 | scope respected, cookies judged correctly |
+
+What the skills changed:
+
+- **Threat model**: without the skill, the analysis was good but stayed in the chat. With it, the documents land in the project, every requirement carries a Verify line, threats name the boundary they cross, and developer accounts (code host, hosting, database, registrar) get an MFA requirement. Existing weaknesses were kept out of the committed documents and pointed to `appsec-review`.
+- **Harden**: without the skill, fixes were right but "verified by eye" when the runtime was missing, and an available scanner was not run. With it, each fix is proven with what is available (grep, parsing, scanners, a control run showing the scanner works) and a risky change needing a decision was left to a person.
+- **Compliance**: the rubric was saturated by the model alone. The skill's measurable effect was scope: without it, the agent translated the interface, changed price display code and added comments in five code files; with it, only legal pages and a footer were added. This criterion was noticed after the baseline run, not in the rubric written beforehand.
+- **Codex / GPT**: skills load natively from `~/.codex/skills/` and the report and document contracts were followed. On bench v1, `appsec-review` in Codex found 31 of 37 flaws (84%) at low reasoning effort; it parked operator-only defects in Open questions, which led to the rule above.
+
 ## Bench results
 
 Recall is out of the number of seeded flaws at the time of the run. Full mode, scanners installed, blind copy built by `bench/setup.sh`.
