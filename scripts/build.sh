@@ -19,7 +19,7 @@ mkdir -p "$dist"
 stage_zip="$(mktemp -d)"
 mkdir -p "$stage_zip/appsec-skills-$version"
 cp -R "$repo/skills" "$repo/install.sh" "$repo/install.ps1" "$repo/LICENSE" "$repo/README.md" "$stage_zip/appsec-skills-$version/"
-(cd "$stage_zip" && zip -q -r "$dist/appsec-skills-$version.zip" "appsec-skills-$version" -x '*.DS_Store')
+(cd "$stage_zip" && zip -q -r "$dist/appsec-skills-$version.zip" "appsec-skills-$version" -x '*.DS_Store' -x '*__pycache__*' -x '*.pyc')
 rm -rf "$stage_zip"
 
 for skill_dir in "$repo"/skills/*/; do
@@ -54,7 +54,7 @@ cat > "$stage/.claude-plugin/plugin.json" <<JSON
   "license": "MIT"
 }
 JSON
-(cd "$stage" && zip -q -r "$dist/appsec-skills.plugin" . -x '*.DS_Store')
+(cd "$stage" && zip -q -r "$dist/appsec-skills.plugin" . -x '*.DS_Store' -x '*__pycache__*' -x '*.pyc')
 echo "  plugin -> dist/appsec-skills.plugin"
 
 (cd "$dist" && shasum -a 256 ./* | sed 's# \./# #' > SHA256SUMS)
