@@ -16,6 +16,8 @@ A skill that *seems* good is not the same as a skill *proven* good. This bench m
 | `score.md` | How to run a review and score it |
 | `v2/` | Eight real advisories, reviewed at the commit before and after their fix |
 | `live-target/` | Reviewing a deployed app without its source: planning and recording authorized tests |
+| `rls-sql/` | Runs the Supabase SQL published in the skills on a local PostgreSQL: baseline behaviour and checklist queries |
+| `batch/` | A batch job where one bad file blocks every later run (generalisation check for V37) |
 | `deps/` | Triage of known vulnerabilities in dependencies by exploitation (KEV, EPSS) and reachability |
 | `threat-model/`, `harden/`, `compliance-fr/` | Scenarios and rubrics for the other three skills |
 

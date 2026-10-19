@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2 (unreleased)
+
+- Bench `bench/rls-sql/`: the Supabase SQL published in the skills now runs on a real PostgreSQL 17 in tests. The `appsec-harden` RLS baseline is checked by behaviour, as each account (28 checks, including the column-privilege pitfall and `aal2`), and the 13 read-only queries of `supabase-rls.md` and `baselines.md` are checked to run and to flag known misconfigurations. A mutation check proves the bench fails when the baseline is broken. Closes the "SQL never run" limit of 0.6.0 and 0.7.0.
+
 ## 0.7.1 (2026-10-20)
 
 - `supabase-rls-probes.md`: the public key is sent in `apikey` only (newer `sb_publishable_` keys are not JWTs); the setup warns when the session has expired and says that a `401` on a session request is a probe error, not "blocked"; probe D stops with a probe error when the account already holds the attempted value, instead of reporting a false escalation.

@@ -1,0 +1,16 @@
+# Read-only queries published in the skills, verbatim. run.sh checks that each one still
+# appears in its document, fills the placeholders (<table> = profiles, <function> = unsafe_fn)
+# and runs it on the test database. Format: <document>|<query>
+skills/appsec-review/references/supabase-rls.md|select tablename, rowsecurity from pg_tables where schemaname = 'public';
+skills/appsec-review/references/supabase-rls.md|select tablename, policyname, cmd, roles, qual, with_check from pg_policies where schemaname = 'public' order by tablename, cmd;
+skills/appsec-review/references/supabase-rls.md|select grantee, column_name, privilege_type from information_schema.column_privileges where table_schema = 'public' and table_name = '<table>';
+skills/appsec-review/references/supabase-rls.md|select tgname, pg_get_triggerdef(oid) from pg_trigger where tgrelid = 'public.<table>'::regclass and not tgisinternal;
+skills/appsec-review/references/supabase-rls.md|select p.proname, p.prosecdef, p.proconfig, pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosecdef;
+skills/appsec-review/references/supabase-rls.md|select grantee, privilege_type from information_schema.routine_privileges where routine_name = '<function>';
+skills/appsec-review/references/supabase-rls.md|select c.relname, c.reloptions from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'v';
+skills/appsec-review/references/supabase-rls.md|select conrelid::regclass, conname, pg_get_constraintdef(oid) from pg_constraint where contype = 'c' and connamespace = 'public'::regnamespace;
+skills/appsec-harden/references/baselines.md|select relname, relrowsecurity, relforcerowsecurity from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r';
+skills/appsec-harden/references/baselines.md|select tablename, cmd, roles, permissive from pg_policies where schemaname = 'public' order by 1, 2;
+skills/appsec-harden/references/baselines.md|select grantee, column_name, privilege_type from information_schema.column_privileges where table_schema = 'public' and table_name = '<table>';
+skills/appsec-harden/references/baselines.md|select p.proname, p.proconfig from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosecdef;
+skills/appsec-harden/references/baselines.md|select relname, reloptions from pg_class where relnamespace = 'public'::regnamespace and relkind = 'v';
