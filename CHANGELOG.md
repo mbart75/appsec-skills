@@ -8,6 +8,7 @@ Security fixes, found by running `appsec-review` on this repository (scanners fo
 - `install.sh --skills` accepted path segments (Low): a value like `appsec-x/../<dir>` passed the name check and could aim the replace or uninstall step outside the skills folder. Only exact skill names are accepted now, as in `install.ps1`.
 - `run-scanners.sh` refused outputs inside the reviewed repository by comparing logical paths (Low): an output path through a symlink to the repository was accepted. Physical paths are compared now.
 - `cve-priority.py` keeps advisory summaries on one line.
+- `install.ps1` uses literal paths (a folder name with `[ ]` made a second install nest a copy inside the first) and removes an existing link as a link (Windows PowerShell 5.1 can empty a link's target with `Remove-Item -Recurse`).
 
 - Bench `bench/rls-sql/`: the Supabase SQL published in the skills now runs on a real PostgreSQL 17 in tests. The `appsec-harden` RLS baseline is checked by behaviour, as each account (28 checks, including the column-privilege pitfall and `aal2`), and the 13 read-only queries of `supabase-rls.md` and `baselines.md` are checked to run and to flag known misconfigurations. A mutation check proves the bench fails when the baseline is broken. Closes the "SQL never run" limit of 0.6.0 and 0.7.0.
 
