@@ -127,12 +127,21 @@ foreach ($target in $targets) {
     foreach ($skill in $chosenSkills) {
         if ($skill -notlike 'appsec-*') { throw "Refusing to touch a non appsec-* folder: $skill" }
         $destination = Join-Path $target.Folder $skill
-        $existed = Test-Path $destination
-        if ($existed) { Remove-Item -Path $destination -Recurse -Force }
+        # -LiteralPath: folder names may contain [ ] which -Path treats as wildcards.
+        $existing = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+        if ($existing) {
+            if ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                # A link or junction: remove the link itself, never what it points to
+                # (Windows PowerShell 5.1 can empty the target with Remove-Item -Recurse).
+                $existing.Delete()
+            } else {
+                Remove-Item -LiteralPath $destination -Recurse -Force
+            }
+        }
         if ($Uninstall) {
-            if ($existed) { Write-Host "  removed $destination" }
+            if ($existing) { Write-Host "  removed $destination" }
         } else {
-            Copy-Item -Path (Join-Path $source $skill) -Destination $destination -Recurse
+            Copy-Item -LiteralPath (Join-Path $source $skill) -Destination $destination -Recurse
             Write-Host "  $skill -> $destination"
         }
     }
