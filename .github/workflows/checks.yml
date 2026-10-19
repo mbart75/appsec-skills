@@ -1,0 +1,59 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Scripts, installers, SQL bench, build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: ShellCheck (shipped and bench scripts; bench/vulnerable-app is flawed on purpose)
+        run: shellcheck install.sh scripts/*.sh skills/appsec-review/scripts/*.sh bench/setup.sh bench/*/setup.sh bench/rls-sql/run.sh
+
+      - name: Python
+        run: |
+          python3 -m py_compile skills/appsec-review/scripts/cve-priority.py
+          python3 bench/check-key.py
+
+      - name: PSScriptAnalyzer on install.ps1
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+          $results = Invoke-ScriptAnalyzer -Path ./install.ps1 -Severity Warning, Error
+          if ($results) { $results | Format-Table -AutoSize; exit 1 }
+
+      - name: Installers on a throwaway home
+        run: |
+          home="$(mktemp -d)"; mkdir -p "$home/.codex"
+          HOME="$home" bash install.sh --agents codex --yes
+          test -f "$home/.codex/skills/appsec-review/SKILL.md"
+          HOME="$home" bash install.sh --agents codex --uninstall --yes
+          test ! -e "$home/.codex/skills/appsec-review"
+          pwsh -NoProfile -File install.ps1 -Dir "$home/custom[1]" -Yes
+          test -f "$home/custom[1]/appsec-review/SKILL.md"
+
+      - name: Supabase SQL on PostgreSQL
+        run: PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)" bash bench/rls-sql/run.sh
+
+      - name: Release build
+        run: |
+          bash scripts/build.sh ci
+          cd dist && sha256sum -c SHA256SUMS
+
+      - name: zizmor on this workflow
+        run: pipx run zizmor==1.31.1 --offline .github/workflows/

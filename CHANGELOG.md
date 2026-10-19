@@ -12,6 +12,7 @@ Security fixes, found by running `appsec-review` on this repository (scanners fo
 - The single-file `appsec-review.md` starts with a note for chat use: line numbers per file, not per paste (both test runs in a chat numbered lines from the start of the paste), `none (chat)` for scanners, and the whole template including *Status* and the *Hand-off* instruction word for word.
 - `install.ps1` uses literal paths (a folder name with `[ ]` made a second install nest a copy inside the first) and removes an existing link as a link (Windows PowerShell 5.1 can empty a link's target with `Remove-Item -Recurse`).
 
+- Continuous integration (`.github/workflows/checks.yml`) on every push and pull request: ShellCheck, PSScriptAnalyzer on `install.ps1`, both installers on a throwaway home (including a folder name with brackets), the Supabase SQL bench on PostgreSQL, the release build with its checksums, and zizmor on the workflow itself. Read-only token, actions pinned to a commit SHA, no persisted credentials.
 - Bench `bench/rls-sql/`: the Supabase SQL published in the skills now runs on a real PostgreSQL 17 in tests. The `appsec-harden` RLS baseline is checked by behaviour, as each account (28 checks, including the column-privilege pitfall and `aal2`), and the 13 read-only queries of `supabase-rls.md` and `baselines.md` are checked to run and to flag known misconfigurations. A mutation check proves the bench fails when the baseline is broken. Closes the "SQL never run" limit of 0.6.0 and 0.7.0.
 
 ## 0.7.1 (2026-10-20)
