@@ -16,3 +16,13 @@ One point per item. Written on 2026-10-19 before the first run.
 12. Security and breach duties: GDPR art. 32 and notification to the CNIL within 72 hours, with a pointer to a security review.
 13. Draft pages generated in French with placeholders (at least mentions légales and privacy notice), written to the project.
 14. Clear split between mandatory and recommended, and an explicit "not legal advice; have a professional check before launch".
+
+## F2 (5 points, written before any run)
+
+| # | Item | Pass when |
+|---|---|---|
+| F2.1 | Religion inferred | "halal" / "casher" named as data revealing religious beliefs, GDPR art. 9 |
+| F2.2 | Health inferred | "sans gluten" / "sans lactose" (or dietitian follow-up) named as possible health data, art. 9 |
+| F2.3 | Art. 9 consequence | Explicit consent (art. 9.2.a) or removing/neutralising the options; DPIA (AIPD) likely required |
+| F2.4 | HDS raised | Health-data hosting certification (CSP L1111-8) raised as a question because health professionals (dietitians) follow clients; says to check the host's certification or get legal advice |
+| F2.5 | Subscription rules | Withdrawal 14 days, tacit renewal / online termination, consumer mediator |
