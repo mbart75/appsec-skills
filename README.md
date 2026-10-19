@@ -102,6 +102,12 @@ The skills are tested against a bench before every release, and the results are 
 
 - **Bench v1** ([`bench/`](bench/)): TinyShop, a small multi-stack application with 37 seeded flaws and a fixed counterpart with traps for false positives.
 - **Bench v2** ([`bench/v2/`](bench/v2/)): eight real vulnerabilities from GitHub Security Advisories published in 2026, each reviewed at the commit before and after its fix.
+- **Known vulnerabilities** ([`bench/deps/`](bench/deps/)): exploited-in-the-wild and reachable versus merely listed (CISA KEV, EPSS, reachability), including a library vendored outside any manifest.
+- **Live targets** ([`bench/live-target/`](bench/live-target/)): planning and recording authorized tests on a deployed app without its source, and writing Supabase RLS probes.
+- **Supabase SQL** ([`bench/rls-sql/`](bench/rls-sql/)): the published RLS baseline and checklist queries, run on a real PostgreSQL, with a mutation check that proves the bench can fail.
+- **Chat use**: the single-file bundle, given to a model with only the bundle and pasted code, produces the full report with correct per-file line numbers.
+
+Every rubric is committed before the first run, and every result is recorded, including the changes that did not help and were dropped.
 
 Results: [`CHANGELOG.md`](CHANGELOG.md).
 
