@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 (unreleased)
+## 0.4.0 (2026-10-19)
 
 - `appsec-review`: **known vulnerabilities ranked by real-world exploitation**. New `scripts/cve-priority.py` (standard library only), run by `run-scanners.sh` after OSV-Scanner: adds to each advisory whether it is in the CISA KEV catalog and its FIRST EPSS score, known exploited first, in `cve-priority.md`. `--package ECOSYSTEM:NAME@VERSION` covers libraries vendored outside any manifest. Only CVE identifiers (and, for `--package`, a package name and version) leave the machine; `--offline` disables it.
 - Triage rules in `references/secrets-supply-chain.md`: inventory what ships, including vendored files; check reachability per advisory; reachable and known exploited is never below High and comes first; not reachable is Low at most whatever its CVSS or EPSS; hardening you cannot see does not lower a rating. The report template gains a *Known vulnerability* line (CVE, KEV, EPSS with date, fixed and recommended versions). The live-target reference checks the versions of shipped libraries; pre-launch item 16 now names KEV.
