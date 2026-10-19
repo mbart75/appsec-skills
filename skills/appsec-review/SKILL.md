@@ -1,6 +1,8 @@
 ---
 name: appsec-review
 description: Use when asked to review code for security, audit a repository, a pull request or a deployed site for vulnerabilities, check whether an app is safe to launch or to make public, find security issues before deploying, or verify that findings from a previous security report are fixed. Covers web apps, APIs, mobile apps, LLM features, CI workflows, Terraform, PowerShell, bash and Python.
+metadata:
+  version: "0.5.0"
 ---
 
 # appsec-review
@@ -71,6 +73,7 @@ In `verify` mode: keep every finding's ID, re-check each one in the code, set it
 | macOS apps and privileged helpers | `references/macos.md` |
 | Launch checklist | `references/pre-launch.md` |
 | Deployed app without source, tests against a running system | `references/live-target.md` |
+| Supabase row-level security: console probes for authorized tests | `references/supabase-rls-probes.md` |
 | Report structure, severity scale, statuses | `references/report-template.md` |
 
 ## Rules

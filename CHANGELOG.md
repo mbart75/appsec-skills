@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 (2026-10-19)
+
+- `appsec-review`: `references/supabase-rls-probes.md`, four console probes for the authorized-tests phase on a Supabase back end, run by a person from test accounts: read reach per table (session versus public key, counts only), another account's rows (filtered on a victim that holds data), a write that must be refused (undone by primary key, with the number of rows removed reported) and a protected field (judged on the returned row, restored if it changed). Linked from `live-target.md` and the skill's reference table. Generic placeholders only.
+- `live-target.md`: neutral examples for the victim and unrelated accounts.
+- Every `SKILL.md` declares its version in `metadata.version`, so reports can name it (an allowed frontmatter key for Codex and Claude Code).
+- Bench `bench/live-target/` L3 (write the probes for a tester), rubric before runs, scored blind by a separate agent. Haiku 5.5: 0.4.0 scored 6, 4, 5 out of 7; with the probes reference 6, 7, 7. Common weak spots across all runs, left as known limits: a refused write probed with `return=representation` is not conclusive on its own (the policy export decides), and the role probe does not check that the account already holds the target value.
+
 ## 0.4.0 (2026-10-19)
 
 - `appsec-review`: **known vulnerabilities ranked by real-world exploitation**. New `scripts/cve-priority.py` (standard library only), run by `run-scanners.sh` after OSV-Scanner: adds to each advisory whether it is in the CISA KEV catalog and its FIRST EPSS score, known exploited first, in `cve-priority.md`. `--package ECOSYSTEM:NAME@VERSION` covers libraries vendored outside any manifest. Only CVE identifiers (and, for `--package`, a package name and version) leave the machine; `--offline` disables it.

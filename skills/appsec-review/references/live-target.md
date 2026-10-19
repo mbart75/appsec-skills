@@ -21,8 +21,8 @@ Use when the review has a URL but no repository, or when tests are run against a
 
 A probe that cannot fail proves nothing. Set up before probing:
 
-- a **victim** test account that holds data in every table probed (write a meal, a note, a message first);
-- an **unrelated** test account per role (another client, a practitioner not linked to the victim).
+- a **victim** test account that holds data in every table probed (create a record, a note, a message first);
+- an **unrelated** test account per role (another user of the same role, a privileged role not linked to the victim).
 
 Then:
 
@@ -39,6 +39,8 @@ Then:
 | `201` on a write that should be refused | The control is missing: a finding |
 | `200` on a write, returned row unchanged | Field ignored: blocked, note it (a `4xx` would be clearer). Judge writes by the returned or re-read row, never by the status alone |
 | `429` | Rate limit: stop |
+
+For a Supabase back end, `supabase-rls-probes.md` has these probes ready to paste into the console: read reach per table, another account's rows, a refused write and a protected field, each undoing its own writes.
 
 ## Report
 

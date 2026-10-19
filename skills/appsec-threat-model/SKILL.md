@@ -1,6 +1,8 @@
 ---
 name: appsec-threat-model
 description: Use when someone is about to build an application or a feature and wants its security designed in from the start - "threat model this", "what security requirements should I build in", "before we implement X", "security by design", "what could go wrong with this feature" - or when an existing project has no documented security requirements yet.
+metadata:
+  version: "0.5.0"
 ---
 
 # appsec-threat-model
