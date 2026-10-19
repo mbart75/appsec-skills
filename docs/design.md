@@ -1,6 +1,6 @@
 # appsec-skills: design
 
-Status: draft for review. Version targeted: 0.1.0.
+Status: implemented in 0.2.0 (all four skills). This document records the design and its rationale; results are in `CHANGELOG.md`.
 
 ## 1. Purpose
 

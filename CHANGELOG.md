@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-10-19)
 
 - `appsec-review`: first version. Modes `diff`, `full`, `pre-launch`, `verify`; report designed as a work order (stable IDs, "Done when", status, hand-off); scanner runner for 11 tools; 16 reference checklists.
 - Test bench: TinyShop with 37 seeded flaws, its fixed counterpart with 7 traps, answer key and scoring procedure.
