@@ -4,18 +4,20 @@
 # Detects which security scanners are installed, runs the ones relevant to the
 # repository, and writes their raw output to a directory OUTSIDE the repository.
 #
-#   bash run-scanners.sh <repo_dir> <out_dir> [--history] [--verify-secrets]
+#   bash run-scanners.sh <repo_dir> <out_dir> [--history] [--verify-secrets] [--offline]
 #
 #   --history          also scan the whole git history for secrets (full mode)
 #   --verify-secrets   let TruffleHog test found secrets against their provider
 #                      (network call carrying the secret to its own issuer; off by default)
+#   --offline          do not fetch the CISA KEV catalog and EPSS scores
 #
 # Never installs anything. Never sends source code anywhere. Some tools download
-# rules or query public vulnerability databases with package names and versions.
+# rules or query public vulnerability databases with package names and versions;
+# cve-priority.py sends CVE identifiers to the FIRST EPSS API and downloads the KEV catalog.
 # Exit code is 0 even when scanners report findings: triage is the agent's job.
 set -uo pipefail
 
-usage() { echo "usage: bash run-scanners.sh <repo_dir> <out_dir> [--history] [--verify-secrets]" >&2; exit 2; }
+usage() { echo "usage: bash run-scanners.sh <repo_dir> <out_dir> [--history] [--verify-secrets] [--offline]" >&2; exit 2; }
 
 [ $# -ge 2 ] || usage
 repo="$(cd "$1" 2>/dev/null && pwd)" || { echo "repository not found: $1" >&2; exit 2; }
@@ -26,10 +28,12 @@ shift 2
 
 history=0
 verify=0
+offline=0
 for arg in "$@"; do
   case "$arg" in
     --history) history=1 ;;
     --verify-secrets) verify=1 ;;
+    --offline) offline=1 ;;
     *) usage ;;
   esac
 done
@@ -134,6 +138,17 @@ if has_files -name 'package.json' -o -name 'requirements*.txt' -o -name 'pyproje
   -o -name 'Cargo.toml' -o -name 'pom.xml' -o -name 'Gemfile' -o -name 'composer.json' -o -name '*.lock' -o -name 'package-lock.json'; then
   if have osv-scanner; then
     run osv-scanner osv.json osv-scanner scan source -r "$repo" --format json --output "$out/osv.json"
+    # Known exploited (CISA KEV) and likely exploited (EPSS) first.
+    here="$(cd "$(dirname "$0")" && pwd)"
+    if have python3 && [ -s "$out/osv.json" ]; then
+      if [ "$offline" -eq 1 ]; then
+        run cve-priority cve-priority.md python3 -I "$here/cve-priority.py" "$out" --offline
+      else
+        run cve-priority cve-priority.md python3 -I "$here/cve-priority.py" "$out"
+      fi
+    elif ! have python3; then
+      missing cve-priority "python3 (to add KEV and EPSS to osv-scanner results)"
+    fi
   else
     missing osv-scanner "brew install osv-scanner | https://github.com/google/osv-scanner"
   fi

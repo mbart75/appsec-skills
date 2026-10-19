@@ -19,6 +19,7 @@ Rating rules that prevent under-rating:
 - **A bypass of a security control is at least Medium** when the control is documented, configured or relied on as a boundary (an allow-list, a "secure mode", a permission setting, an approval step), even if, in the default configuration, the attacker could reach the same power another way. Deployments that enable the control rely on it.
 - **A flaw reachable through a public API, an exported function or a documented option** is rated for the callers who use it as documented, not only for this repository's own call sites.
 - **Rate the worst realistic deployment**, not the most favourable one, and say which deployment the rating assumes.
+- **Known vulnerabilities in dependencies** follow the triage table in `secrets-supply-chain.md`: known exploited (KEV) and reachable is never below High and comes first in the fix order; not reachable is Low at most.
 
 Confidence, separately: **High** (code path read end to end), **Medium** (likely, one assumption stated), **Low** (needs context: move it to Open questions instead of Findings).
 
@@ -61,6 +62,7 @@ Confidence, separately: **High** (code path read end to end), **Medium** (likely
 - **Location**: `<file>:<line>` (and other places with the same root cause)
 - **Category**: <CWE-nnn> · <OWASP reference>
 - **Confidence**: <High / Medium>
+- **Known vulnerability**: <only in findings about a dependency, otherwise leave the line out: CVE · in CISA KEV yes (added <date>) / no · EPSS <score> (<date>) · fixed in <first fixed version>, recommended <current version>>
 - **Status**: open
 
 **Evidence**

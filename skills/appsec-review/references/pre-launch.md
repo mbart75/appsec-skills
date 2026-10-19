@@ -30,7 +30,7 @@ Explain each failed item in plain words: the people launching may not be securit
 
 14. HTTPS everywhere with HSTS; security headers set; CORS limited to known origins.
 15. Error messages shown to users contain no technical details.
-16. Dependencies are pinned with a committed lockfile and have no known critical vulnerability.
+16. Dependencies are pinned with a committed lockfile; no reachable known vulnerability that is exploited in the wild (CISA KEV) or rated High or Critical, including vendored libraries.
 17. Costs are capped: AI provider spending limit, per-user quotas on expensive actions, cloud budget alert.
 18. Backups exist and a restore has been tested.
 19. Logs record security events without passwords or tokens, and someone will see an alert.

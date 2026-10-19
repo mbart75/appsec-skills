@@ -14,6 +14,10 @@ A skill that *seems* good is not the same as a skill *proven* good. This bench m
 | `check-key.py` | Verifies the key still matches the code. Run it after any edit |
 | `setup.sh` | Builds a blind scratch copy of one variant, outside this repository, with its own git history |
 | `score.md` | How to run a review and score it |
+| `v2/` | Eight real advisories, reviewed at the commit before and after their fix |
+| `live-target/` | Reviewing a deployed app without its source: planning and recording authorized tests |
+| `deps/` | Triage of known vulnerabilities in dependencies by exploitation (KEV, EPSS) and reachability |
+| `threat-model/`, `harden/`, `compliance-fr/` | Scenarios and rubrics for the other three skills |
 
 ## Adding a flaw
 

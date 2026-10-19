@@ -21,6 +21,7 @@ The loop: `appsec-threat-model` writes the requirements, `appsec-review` checks 
 
 - **Source code never leaves your machine** unless it is already public. No scanner that uploads code is used by default.
 - **Scanners are optional.** The skill runs the ones you have (gitleaks, TruffleHog, Semgrep, Bandit, ShellCheck, PSScriptAnalyzer, OSV-Scanner, Checkov, Trivy, zizmor), lists the missing ones, and never installs anything. Without any, it still works: most serious flaws are found by reading the code.
+- **Known vulnerabilities are ranked by real-world exploitation**, not by CVSS alone: each CVE found in dependencies, including vendored libraries, is checked against the CISA KEV catalog (exploited in the wild) and its EPSS score (likely to be exploited), then against the code (is the vulnerable function used?). Only CVE identifiers leave the machine for this; `--offline` turns it off.
 - **Every finding is verified** before it is reported: attacker-controlled input, a path to the dangerous operation, a concrete attack. Uncertain items are kept apart as open questions.
 - **Read-only.** The review never modifies your code.
 - **Reports stay out of the repository**: a list of weaknesses is a map for attackers.

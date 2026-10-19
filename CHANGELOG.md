@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 (unreleased)
+
+- `appsec-review`: **known vulnerabilities ranked by real-world exploitation**. New `scripts/cve-priority.py` (standard library only), run by `run-scanners.sh` after OSV-Scanner: adds to each advisory whether it is in the CISA KEV catalog and its FIRST EPSS score, known exploited first, in `cve-priority.md`. `--package ECOSYSTEM:NAME@VERSION` covers libraries vendored outside any manifest. Only CVE identifiers (and, for `--package`, a package name and version) leave the machine; `--offline` disables it.
+- Triage rules in `references/secrets-supply-chain.md`: inventory what ships, including vendored files; check reachability per advisory; reachable and known exploited is never below High and comes first; not reachable is Low at most whatever its CVSS or EPSS; hardening you cannot see does not lower a rating. The report template gains a *Known vulnerability* line (CVE, KEV, EPSS with date, fixed and recommended versions). The live-target reference checks the versions of shipped libraries; pre-launch item 16 now names KEV.
+- Bench `bench/deps/` (Ledgerly: Node.js and Java, log4j 2.14.1, vendored jQuery 3.4.1, ejs 3.1.6, lodash 4.17.15), rubric before runs. Haiku 5.5: 3.3/9 on average → 9/9 on three runs. Details in `bench/deps/results.md`. Regression check on bench v1: 36/37 again, no false positive, no secret leaked.
+
 ## 0.3.0 (2026-10-19)
 
 - `appsec-review`: **live targets**. A deployed application reviewed without its source, or tested while running, follows `references/live-target.md`: passive look first, the owner's written authorization with an explicit scope, test accounts created by a person, probes that can fail (a victim account holding data, an unrelated account per role), count-only reads, undone writes, a reading table for status codes (a `400` is a probe error, an empty `0` is inconclusive, a write is judged by the returned row). The report template gains `Authorization` and `Testing` rows, a test log and a list of test artefacts to remove; the verdict says what to do now when real users are already exposed.
@@ -51,6 +57,7 @@ Recall is out of the number of seeded flaws at the time of the run. Full mode, s
 | 2026-10-16 | none (baseline) | Claude Haiku 5.5 | vulnerable | 36/36 | n/a | 0 | Report outside the repository without being told |
 | 2026-10-16 | appsec-review draft | Claude Haiku 5.5 | vulnerable | 35/36 | n/a | 0 | 34 found, 2 rated below the floor at the time (floor later lowered to Low for V28 and V32, see key notes). Every finding had location, scenario, fix, "Done when" and status; no secret leaked |
 | 2026-10-16 | appsec-review draft | Claude Haiku 5.5 | secure | n/a | 0.5 | 1 | Anon key listed as an Info finding while judged "public by design"; one speculative finding. Found a real flaw (now V37). Led to the "work order" placement rule |
+| 2026-10-19 | appsec-review 0.4.0 (KEV and EPSS triage) | Claude Haiku 5.5 | vulnerable | 36/37 | n/a | 0 | Only V37 missed again; a few minor valid extras folded into existing findings; no lockfile in TinyShop, so the dependency finding says no version could be checked |
 | 2026-10-19 | appsec-review 0.3.0 (live-target reference) | Claude Haiku 5.5 | vulnerable | 36/37 | n/a | 0 | Regression check after the live-target change: only V37 missed (worker loop without error handling); one accepted Low residual; no secret leaked; `Authorization` and `Testing` rows filled "not applicable" |
 | 2026-10-16 | appsec-review + placement rule | Claude Haiku 5.5 | secure | n/a | 0 | 0 | Anon key moved to "done well" and the scanner appendix. 16 findings, all valid or accepted residuals; three accepted residuals rated Medium instead of Low. Copy predates the V37 fix, so V37 was reported again |
 

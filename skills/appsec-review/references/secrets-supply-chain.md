@@ -21,12 +21,32 @@ Judging a match: decode before rating. A JWT's payload is base64: read its `role
 | Check | Flaw | Expected |
 |---|---|---|
 | Version pinning | `*`, `latest`, open ranges for production dependencies; no lockfile committed | Lockfile committed; installs from it (`npm ci`, `pip install --require-hashes`, `poetry install --sync`) |
-| Known vulnerabilities | Vulnerable versions in the lockfile | Upgrade, or document why the vulnerable code path is unreachable |
+| Known vulnerabilities | Vulnerable versions in a lockfile, a vendored file or an image | Triage below |
 | Install scripts | `postinstall` scripts from dependencies run on every install, including in CI with secrets | `--ignore-scripts` in CI where possible; review new dependencies |
 | New and unknown packages | Typosquats, very new or low-reputation packages, packages pulled from a git URL | Check name, publisher, age and downloads; malicious-package scanners |
 | Update policy | Automatic adoption of versions published hours ago | Renovate or Dependabot with a release-age delay of a few days |
 | Third-party scripts at runtime | CDN scripts without version pinning or Subresource Integrity | Pinned version and `integrity` attribute, or self-hosted |
 | Container images | `latest` tags, unpinned base images, images running as root | Pinned digests, minimal base, non-root user |
+
+## Known vulnerabilities: triage
+
+A list of CVEs is not a list of findings. Three questions decide each one: is it exploited in the wild, is it likely to be, and does this code reach it.
+
+1. **Inventory what ships**, not only lockfiles. OSV-Scanner reads manifests and lockfiles; it does not see vendored or copied libraries (`vendor/`, `public/`, `static/`, a `*.min.js` with a version banner, a copied jar). Read their version from the banner or file name and add them: `python3 -I <this skill's folder>/scripts/cve-priority.py <out_dir> --package npm:jquery@3.4.1`.
+2. **Exploitation data**: `run-scanners.sh` runs `cve-priority.py`, which writes `cve-priority.md`: each advisory with whether it is in the CISA **KEV** catalog (known exploited in the wild) and its **EPSS** score (probability of exploitation in the next 30 days), known exploited first. If it could not run, say so in the report.
+3. **Reachability**, per advisory: read what the advisory says is vulnerable (a function, an option, a parser, a feature), find whether the code uses it, and whether input an attacker controls gets there. A sanitiser in front of the library does not make it unreachable when the advisory is about bypassing that kind of sanitiser (jQuery `.html()` after DOMPurify).
+4. **Rate**:
+
+| Situation | Rating |
+|---|---|
+| Reachable and in KEV | Rate the impact as for any finding, never below High; Critical when it gives code execution or full data access without an account. **First in the fix order** |
+| Reachable, not in KEV | Rate the impact as for any finding; among findings of the same severity, the higher EPSS comes first |
+| In KEV, reachability not established | At least Medium; what would decide reachability goes to Open questions |
+| Not reachable: the vulnerable function or feature is not used | Low at most, whatever its CVSS or EPSS, with the reason written; the upgrade is still recommended |
+
+Rate the worst realistic deployment: do not lower a reachable known-exploited flaw because of hardening you cannot see (a recent runtime, a WAF); write that condition as an open question instead.
+
+5. **In each dependency finding**, fill the *Known vulnerability* line of the template: CVE, KEV yes or no (with the date added), EPSS score and date, the first fixed version and the recommended current one. One upgrade often closes several advisories: list them.
 
 ## Repository hygiene for public projects
 

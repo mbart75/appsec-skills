@@ -28,6 +28,7 @@ Reading level: `expert` (default for security people) or `plain` (adds an "In pl
 2. **Run the scanners** that are installed:
    `bash <this skill's folder>/scripts/run-scanners.sh <repo> <output_dir> [--history]`
    The output directory must be outside the repository. Use `--history` in `full`, `pre-launch` and `verify`. If the script cannot run, run the available tools by hand. If none is installed, continue: the review below does not depend on them.
+   Known vulnerabilities in dependencies come out ranked by exploitation (CISA KEV, EPSS) in `cve-priority.md`; triage them with `references/secrets-supply-chain.md`, including libraries vendored outside any manifest.
 3. **Review by reading the code**, with the reference files that match the stack (table below). Read every entry point. Scanners find about half of real flaws; access control, business logic, LLM agency and authentication flows are found only this way.
    **Attack every security control you find.** An allow-list, a sanitiser, an authentication check, an SSRF guard or a "secure mode" is where real-world flaws concentrate: most published vulnerabilities are defences that exist but can be bypassed. For each one ask: what input passes the check but still does harm (arguments and flags of allowed commands, characters missing from a filter, other encodings), what happens when its lookup or configuration is missing (does it fail open?), is it on by default, and is the value checked the same one that is used later (time of check versus time of use)?
 4. **Verify every candidate**, from the scanners and from your reading, before it becomes a finding:
@@ -58,7 +59,7 @@ In `verify` mode: keep every finding's ID, re-check each one in the code, set it
 | Login, passwords, reset flows, sessions, JWT, MFA | `references/auth.md` |
 | Injection, XSS, SSRF, uploads, CORS, headers, errors, personal data in responses | `references/web-app.md` |
 | REST and GraphQL APIs | `references/api.md` |
-| Secrets, dependencies, lockfiles, malicious packages | `references/secrets-supply-chain.md` |
+| Secrets, dependencies, known CVEs (KEV, EPSS, reachability), malicious packages | `references/secrets-supply-chain.md` |
 | Features calling an LLM, agents, tools | `references/llm-apps.md` |
 | GitHub Actions and CI | `references/github-actions.md` |
 | Terraform and cloud | `references/terraform.md` |
