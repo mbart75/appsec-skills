@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1 (unreleased)
+
+- `supabase-rls-probes.md`: the public key is sent in `apikey` only (newer `sb_publishable_` keys are not JWTs); the setup warns when the session has expired and says that a `401` on a session request is a probe error, not "blocked"; probe D stops with a probe error when the account already holds the attempted value, instead of reporting a false escalation.
+- Bench `bench/batch/` (Receiptly, a batch job where one bad file blocks every later run): the model already finds it 3/3 with 0.7.0. A candidate rule did not make bench v1 find V37, the same class masked by command-execution flaws in the same function, so it was not adopted. Details in `bench/batch/results.md`.
+- Cross-model check with Codex (GPT-6.1, 0.7.0 skills): live-target L2 (plan from a URL) 9/9; L3 (RLS probes) 5/7, no role probe and manual instead of automatic undo; the dependency bench run was cut by the Codex usage limit before the report, after `cve-priority.py` had run inside the Codex sandbox. Semgrep cannot run in that sandbox (it writes to `~/.semgrep`).
+
 ## 0.7.0 (2026-10-19)
 
 - `appsec-harden`: **Supabase RLS, safe baseline** in `references/baselines.md`, as changes with their checks: RLS enabled and forced; default deny with one policy per operation and role; ownership with `using` and `with check` on `auth.uid()`; privileged fields protected by a trigger or column privileges, with an explicit refusal rather than a `200` that ignores the field; profiles created server-side; access to another account's data only through a link row the data owner activates; hardened `security definer` functions (`search_path`, `auth.uid()`, minimal `execute`); `security_invoker` views; `aal2` for sensitive roles; `octet_length` limits on client-written columns; Auth settings (password length, leaked-password protection, dedicated SMTP). Ends with the verify loop: replay `appsec-review/references/supabase-rls-probes.md`, then `appsec-review` in verify mode.

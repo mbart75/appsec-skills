@@ -2,7 +2,7 @@
 name: appsec-compliance-fr
 description: Use when a website, web app or mobile app is offered to people in France and someone asks whether it is legally compliant, what legal pages it needs (mentions légales, politique de confidentialité, CGV, CGU, cookies), whether a cookie banner is required, or what to check before launching in France - including GDPR/RGPD, CNIL, consumer law and accessibility questions.
 metadata:
-  version: "0.7.0"
+  version: "0.7.1"
 ---
 
 # appsec-compliance-fr

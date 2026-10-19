@@ -13,7 +13,7 @@ Fill the placeholders before running: `<PROJECT_REF>` (the subdomain of `https:/
 
 ## Setup: paste once per console
 
-Defines the helpers the four probes use. The session key below is the supabase-js v2 default; if the page stores the session elsewhere, adjust `STORAGE_KEY`.
+Defines the helpers the four probes use. The session key below is the supabase-js v2 default; if the page stores the session elsewhere, adjust `STORAGE_KEY`. Paste it again after switching account or reloading the page. A `401` on a request sent with the session means a missing or expired token: a probe error, not "blocked".
 
 ```js
 window.probe = (() => {
@@ -24,7 +24,8 @@ window.probe = (() => {
   const session = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
   const token = session && (session.access_token || (session.currentSession || {}).access_token);
   const me = session && (session.user || {}).id;
-  const headers = (asUser) => ({ apikey: PUBLIC_KEY, Authorization: `Bearer ${asUser ? token : PUBLIC_KEY}` });
+  // The public key goes in `apikey` only: newer `sb_publishable_` keys are not JWTs and do not belong in Authorization.
+  const headers = (asUser) => (asUser ? { apikey: PUBLIC_KEY, Authorization: `Bearer ${token}` } : { apikey: PUBLIC_KEY });
   const pause = () => new Promise((r) => setTimeout(r, 300)); // stay gentle with a live service
   const count = async (table, query, asUser = true) => {
     await pause();
@@ -32,6 +33,7 @@ window.probe = (() => {
     return { status: r.status, count: (r.headers.get("content-range") || "*/?").split("/")[1] };
   };
   if (!token) console.warn("No session found under", STORAGE_KEY, "- sign in as the test account first");
+  if (session && session.expires_at && session.expires_at * 1000 < Date.now()) console.warn("Session expired: reload the signed-in page, then paste this setup again");
   return { BASE, me, headers, count, pause };
 })();
 ```
@@ -120,6 +122,9 @@ await (async () => {
     return console.log(JSON.stringify({ probe: "D protected field", error: "probe error: own row not readable once", status: get.status, current }, null, 2));
   }
   const before = current[0][FIELD];
+  if (String(before) === String(ATTEMPT)) {
+    return console.log(JSON.stringify({ probe: "D protected field", error: "probe error: the account already holds the attempted value", before }, null, 2));
+  }
   await probe.pause();
   const r = await fetch(`${probe.BASE}${TABLE}?${own}&select=${FIELD}`, {
     method: "PATCH",
@@ -142,4 +147,4 @@ await (async () => {
 })();
 ```
 
-**Reading**: judge by `after`, never by `status` alone. A `probe error` line means the account could not read its own row exactly once (wrong `KEY`, or no row): fix the probe. `changed: true` is a finding (privilege escalation if the field is a role). `200` with `after` equal to `before` means the field was ignored: blocked, and worth a note (a `4xx` would be clearer). `200` with an empty array means the update matched no row the account may change: blocked by policy. If `restoreStatus` is not `2xx`, list the row under *Test artefacts to remove*.
+**Reading**: judge by `after`, never by `status` alone. A `probe error` line means the account could not read its own row exactly once (wrong `KEY`, or no row), or already holds `ATTEMPT` (pick a value it does not have): fix the probe. `changed: true` is a finding (privilege escalation if the field is a role). `200` with `after` equal to `before` means the field was ignored: blocked, and worth a note (a `4xx` would be clearer). `200` with an empty array means the update matched no row the account may change: blocked by policy. If `restoreStatus` is not `2xx`, list the row under *Test artefacts to remove*.
