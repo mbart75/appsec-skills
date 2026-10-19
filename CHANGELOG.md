@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (unreleased)
+## 0.3.0 (2026-10-19)
 
 - `appsec-review`: **live targets**. A deployed application reviewed without its source, or tested while running, follows `references/live-target.md`: passive look first, the owner's written authorization with an explicit scope, test accounts created by a person, probes that can fail (a victim account holding data, an unrelated account per role), count-only reads, undone writes, a reading table for status codes (a `400` is a probe error, an empty `0` is inconclusive, a write is judged by the returned row). The report template gains `Authorization` and `Testing` rows, a test log and a list of test artefacts to remove; the verdict says what to do now when real users are already exposed.
 - Bench `bench/live-target/`: two scenarios and their rubric. Haiku 5.5: L1 (update a report with test results) 10/11 on average → 11/11; L2 (plan from a URL only) 5/9 → 8.7/9. Details in `bench/live-target/results.md`. Regression check on bench v1: 36/37, no false positive.
