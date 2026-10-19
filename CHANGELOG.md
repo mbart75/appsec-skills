@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.1 (unreleased)
+## 0.7.1 (2026-10-20)
 
 - `supabase-rls-probes.md`: the public key is sent in `apikey` only (newer `sb_publishable_` keys are not JWTs); the setup warns when the session has expired and says that a `401` on a session request is a probe error, not "blocked"; probe D stops with a probe error when the account already holds the attempted value, instead of reporting a false escalation.
 - Bench `bench/batch/` (Receiptly, a batch job where one bad file blocks every later run): the model already finds it 3/3 with 0.7.0. A candidate rule did not make bench v1 find V37, the same class masked by command-execution flaws in the same function, so it was not adopted. Details in `bench/batch/results.md`.
