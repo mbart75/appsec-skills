@@ -127,7 +127,8 @@ if [ ${#targets[@]} -eq 0 ]; then
       [ -d "$config" ] && add_target "$name" "$folder"
     done < <(catalogue)
   else
-    for n in $answer; do
+    read -r -a choices <<< "$answer"   # split on spaces without filename expansion
+    for n in "${choices[@]}"; do
       if [ "$n" = "c" ]; then
         printf 'Path of the skills folder: '; read -r custom
         add_target "Custom folder" "${custom/#\~/$HOME}"
