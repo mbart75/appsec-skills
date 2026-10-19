@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+- `appsec-review`: **live targets**. A deployed application reviewed without its source, or tested while running, follows `references/live-target.md`: passive look first, the owner's written authorization with an explicit scope, test accounts created by a person, probes that can fail (a victim account holding data, an unrelated account per role), count-only reads, undone writes, a reading table for status codes (a `400` is a probe error, an empty `0` is inconclusive, a write is judged by the returned row). The report template gains `Authorization` and `Testing` rows, a test log and a list of test artefacts to remove; the verdict says what to do now when real users are already exposed.
+- Bench `bench/live-target/`: two scenarios and their rubric. Haiku 5.5: L1 (update a report with test results) 10/11 on average → 11/11; L2 (plan from a URL only) 5/9 → 8.7/9. Details in `bench/live-target/results.md`. Regression check on bench v1: 36/37, no false positive.
+- Bench compliance F2 (religion and health data inferred from diet options, health-data hosting): 5/5 on three runs with the current skill, so no change was made.
+
 ## 0.2.1 (2026-10-19)
 
 - Interactive installers: `install.sh` (macOS, Linux) and `install.ps1` (Windows). They detect the agents present, let the user choose, show the plan, and only touch `appsec-*` folders. Copy mode by default, link mode from a clone, uninstall and dry-run options.
@@ -45,6 +51,7 @@ Recall is out of the number of seeded flaws at the time of the run. Full mode, s
 | 2026-10-16 | none (baseline) | Claude Haiku 5.5 | vulnerable | 36/36 | n/a | 0 | Report outside the repository without being told |
 | 2026-10-16 | appsec-review draft | Claude Haiku 5.5 | vulnerable | 35/36 | n/a | 0 | 34 found, 2 rated below the floor at the time (floor later lowered to Low for V28 and V32, see key notes). Every finding had location, scenario, fix, "Done when" and status; no secret leaked |
 | 2026-10-16 | appsec-review draft | Claude Haiku 5.5 | secure | n/a | 0.5 | 1 | Anon key listed as an Info finding while judged "public by design"; one speculative finding. Found a real flaw (now V37). Led to the "work order" placement rule |
+| 2026-10-19 | appsec-review 0.3.0 (live-target reference) | Claude Haiku 5.5 | vulnerable | 36/37 | n/a | 0 | Regression check after the live-target change: only V37 missed (worker loop without error handling); one accepted Low residual; no secret leaked; `Authorization` and `Testing` rows filled "not applicable" |
 | 2026-10-16 | appsec-review + placement rule | Claude Haiku 5.5 | secure | n/a | 0 | 0 | Anon key moved to "done well" and the scanner appendix. 16 findings, all valid or accepted residuals; three accepted residuals rated Medium instead of Low. Copy predates the V37 fix, so V37 was reported again |
 
 ### Bench v2 (real advisories), Claude Haiku 5.5, full mode, scanners installed, web disabled

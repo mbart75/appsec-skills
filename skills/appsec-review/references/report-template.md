@@ -36,6 +36,8 @@ Confidence, separately: **High** (code path read end to end), **Medium** (likely
 | Reviewed by | appsec-review <version>, <agent and model> |
 | Scanners run | <list> |
 | Scanners missing | <list with install command, or "none"> |
+| Authorization | <live target only: who, date, channel, scope (roles or areas, reads or writes, production or copy)> |
+| Testing | <live target only: passive only, or authorized tests on <dates>, see Test log> |
 
 ## Verdict
 
@@ -98,6 +100,19 @@ Give this file to any AI coding assistant with this instruction:
 > design change or a decision, stop and ask instead of guessing. If you believe a
 > finding is wrong, set its Status to `false-positive` with your reason, do not skip it silently.
 > When all findings are handled, run appsec-review in verify mode with this file.
+
+<live target only>
+## Test log
+
+| Date | Account (role) | Request | Result | Reading |
+|---|---|---|---|---|
+| <date> | <test account, role> | <exact method, path, filter, body> | <status, count or returned row> | <blocked / leak / inconclusive / probe error, and the finding or question it decides> |
+
+## Test artefacts to remove
+
+- <test account address or id, role: delete from production> (never a password)
+- <rows created by tests and not already removed>
+</live target only>
 
 ## Appendix: scanner results
 

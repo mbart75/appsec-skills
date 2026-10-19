@@ -11,7 +11,7 @@ Four skills that cover the life of a project, from design to launch:
 | Skill | When | What it produces |
 |---|---|---|
 | **`appsec-threat-model`** | Before building an app or a feature (security by design) | `docs/security/threat-model.md` and `requirements.md` in the project: trust boundaries, concrete threats, testable requirements, each with how to verify it |
-| **`appsec-review`** | While coding (`diff`), at any time (`full`), before going live (`pre-launch`), after fixes (`verify`) | A verified report written as a **work order**: stable IDs, evidence with secrets redacted, attack scenario, fix, "Done when" check, status |
+| **`appsec-review`** | While coding (`diff`), at any time (`full`), before going live (`pre-launch`), after fixes (`verify`); also on a deployed app without its source, with authorized tests | A verified report written as a **work order**: stable IDs, evidence with secrets redacted, attack scenario, fix, "Done when" check, status |
 | **`appsec-harden`** | To fix a report's findings or apply a baseline (CI, headers, cookies, repository hygiene) | One commit per fix, each proven by a test, scanner or static check; rotations and decisions left explicitly to a person |
 | **`appsec-compliance-fr`** | Before launching a site or app in France | A checklist with sources (mentions légales, RGPD, cookies, consumer law, reviews, AI Act, accessibility) and draft pages in French with placeholders |
 
@@ -81,6 +81,8 @@ Results per skill and per model are in [`CHANGELOG.md`](CHANGELOG.md).
 > Is this app ready to launch? Use appsec-review in pre-launch mode, and explain in plain words.
 
 > Here is the security report. Fix the findings, then run appsec-review in verify mode.
+
+> Here is my friend's site, already live; I don't have the code. Use appsec-review: what can we check, and what do we need from her?
 
 > We're adding gift cards. Before we implement it, give us the security requirements.
 
