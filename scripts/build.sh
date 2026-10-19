@@ -23,12 +23,13 @@ for skill_dir in "$repo"/skills/*/; do
   {
     echo "<!-- $name $version: single-file bundle. The scanner script is not included; see the repository. -->"
     cat "$skill_dir/SKILL.md"
-    if [ -d "$skill_dir/references" ]; then
-      for ref in "$skill_dir"/references/*.md; do
-        printf '\n\n---\n\n<!-- file: references/%s -->\n\n' "$(basename "$ref")"
+    for sub in references templates; do
+      [ -d "$skill_dir/$sub" ] || continue
+      for ref in "$skill_dir/$sub"/*.md; do
+        printf '\n\n---\n\n<!-- file: %s/%s -->\n\n' "$sub" "$(basename "$ref")"
         cat "$ref"
       done
-    fi
+    done
   } > "$out"
   echo "  $name -> dist/$name.md ($(wc -w < "$out" | tr -d ' ') words)"
 done
