@@ -15,7 +15,12 @@ dist="$repo/dist"
 rm -rf "$dist"
 mkdir -p "$dist"
 
-(cd "$repo" && zip -q -r "$dist/appsec-skills-$version.zip" skills LICENSE -x '*.DS_Store')
+# The zip unpacks into one folder holding the skills and both installers.
+stage_zip="$(mktemp -d)"
+mkdir -p "$stage_zip/appsec-skills-$version"
+cp -R "$repo/skills" "$repo/install.sh" "$repo/install.ps1" "$repo/LICENSE" "$repo/README.md" "$stage_zip/appsec-skills-$version/"
+(cd "$stage_zip" && zip -q -r "$dist/appsec-skills-$version.zip" "appsec-skills-$version" -x '*.DS_Store')
+rm -rf "$stage_zip"
 
 for skill_dir in "$repo"/skills/*/; do
   name="$(basename "$skill_dir")"
@@ -51,3 +56,6 @@ cat > "$stage/.claude-plugin/plugin.json" <<JSON
 JSON
 (cd "$stage" && zip -q -r "$dist/appsec-skills.plugin" . -x '*.DS_Store')
 echo "  plugin -> dist/appsec-skills.plugin"
+
+(cd "$dist" && shasum -a 256 ./* | sed 's# \./# #' > SHA256SUMS)
+echo "  sums -> dist/SHA256SUMS"

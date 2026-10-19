@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 (2026-10-19)
+
+- Interactive installers: `install.sh` (macOS, Linux) and `install.ps1` (Windows). They detect the agents present, let the user choose, show the plan, and only touch `appsec-*` folders. Copy mode by default, link mode from a clone, uninstall and dry-run options.
+- Release zip unpacks into one folder with the skills and both installers; `SHA256SUMS` published with each release.
+
 ## 0.2.0 (2026-10-19)
 
 - `appsec-review`: first version. Modes `diff`, `full`, `pre-launch`, `verify`; report designed as a work order (stable IDs, "Done when", status, hand-off); scanner runner for 11 tools; 16 reference checklists.

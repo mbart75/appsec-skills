@@ -30,9 +30,29 @@ The full rationale is in [`docs/design.md`](docs/design.md).
 
 ## Install
 
-Copy or link each folder of `skills/` into your agent's skills directory:
+**From a release (recommended)**: download `appsec-skills-<version>.zip` from the [latest release](https://github.com/mbart75/appsec-skills/releases/latest), check it against `SHA256SUMS`, unzip it, and run the installer. It lists the agents it finds, asks which ones you use, shows its plan and asks before changing anything.
 
-| Agent | Skills directory |
+```bash
+shasum -a 256 -c SHA256SUMS --ignore-missing   # macOS / Linux: verify the download
+unzip appsec-skills-*.zip && cd appsec-skills-*/
+bash install.sh      # "bash" works even if unzipping dropped the executable bit
+```
+
+```powershell
+# Windows
+Get-FileHash .\appsec-skills-*.zip -Algorithm SHA256   # compare with SHA256SUMS
+Expand-Archive .\appsec-skills-*.zip -DestinationPath . ; cd .\appsec-skills-*\
+Unblock-File .\install.ps1    # downloaded scripts are blocked; unblock this file only, after checking the hash
+./install.ps1
+```
+
+On Windows, do not lower the execution policy for the whole machine (`Set-ExecutionPolicy Unrestricted`) to run the installer: unblocking this one verified file is enough.
+
+Non-interactive: `./install.sh --agents claude,codex --yes` (or `--all-detected`, `--dir <skills folder>`, `--skills appsec-review`, `--uninstall`, `--dry-run`). The installer only creates, replaces or removes folders named `appsec-*`, uses no network and needs no administrator rights. There is deliberately no `curl | bash` one-liner.
+
+**From a clone**: `./install.sh --link` links instead of copying, so `git pull` updates every agent at once.
+
+| Agent | Skills folder used |
 |---|---|
 | Claude Code | `~/.claude/skills/` |
 | Codex | `~/.codex/skills/` |
@@ -40,13 +60,9 @@ Copy or link each folder of `skills/` into your agent's skills directory:
 | GitHub Copilot CLI | `~/.copilot/skills/` |
 | Gemini CLI | `~/.gemini/skills/` |
 | OpenCode | `~/.config/opencode/skills/` |
+| Other agents | any folder, with `--dir` |
 
-```bash
-git clone https://github.com/mbart75/appsec-skills.git
-for s in "$PWD"/appsec-skills/skills/*; do ln -s "$s" ~/.claude/skills/; done
-```
-
-Agents without skills support can read [`AGENTS.md`](AGENTS.md). For a chat assistant (ChatGPT, Claude.ai, Gemini), run `bash scripts/build.sh` and attach the matching `dist/<skill>.md` to the conversation. For Cowork, install `dist/appsec-skills.plugin`.
+Agents without skills support can read [`AGENTS.md`](AGENTS.md). For a chat assistant (ChatGPT, Claude.ai, Gemini), attach the matching `appsec-<skill>.md` from the release to the conversation. For Claude Cowork, install `appsec-skills.plugin`.
 
 ### Tested with
 

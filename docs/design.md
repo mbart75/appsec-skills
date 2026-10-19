@@ -208,10 +208,10 @@ appsec-skills/
 
 ## 8. Distribution
 
-- **Agents with a skills folder**: copy or link `skills/*` into it. The README gives the folder for each agent.
+- **Agents with a skills folder**: `install.sh` (macOS, Linux) or `install.ps1` (Windows) detects the agents present, lets the user choose, shows the plan, and copies (or, from a clone, links) the `appsec-*` folders. No network, no elevation, nothing outside `appsec-*` folders is touched. No `curl | bash` installer is offered on purpose.
 - **Agents without skills support**: point them to `AGENTS.md`, which tells them which `SKILL.md` to read for which request.
 - **Chat assistants that cannot read a folder**: `scripts/build.sh` produces one Markdown file per skill with its references inlined, to attach to a conversation or a custom assistant.
-- **Releases**: semantic versioning, tagged releases with a zip of `skills/`.
+- **Releases**: semantic versioning, tagged releases with a zip (skills and installers), the single-file bundles, the plugin archive and `SHA256SUMS`.
 
 ## 9. Out of scope for 0.1
 
