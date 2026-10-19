@@ -48,6 +48,28 @@ Framework helpers when present: `helmet` (Express), `next.config.js` headers, Dj
 | Owner told which secret to rotate, where, and that it remains in git history | Final answer lists it under "left for a person" |
 | History rewrite only if the owner asks, after rotation | Not done by default |
 
+## Supabase RLS, safe baseline
+
+For an app whose browser talks to Supabase directly. Write each change as a SQL migration (`supabase/migrations/`), apply it locally first (`supabase db reset`), and keep the policy tests with the code (`supabase test db` with pgTAP when the project has it). What to look for in existing policies is in `appsec-review/references/supabase-rls.md`.
+
+| Change | Check |
+|---|---|
+| RLS enabled **and forced** on every table in an exposed schema: `alter table public.<table> enable row level security;` then `alter table public.<table> force row level security;` (forced also applies to the table owner) | `select relname, relrowsecurity, relforcerowsecurity from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r';` both `true` on every row |
+| Default deny, then one policy per operation and per role: `for select`, `for insert`, `for update`, `for delete`, each `to authenticated` (or `to anon` only for data meant to be public); no `for all`, no `using (true)` on user data | `select tablename, cmd, roles, permissive from pg_policies where schemaname = 'public' order by 1, 2;` one row per table, command and role, nothing wider than intended |
+| Ownership on both sides: `using ((select auth.uid()) = <owner_column>)` on select, update and delete; `with check ((select auth.uid()) = <owner_column>)` on insert and update. The owner column is `not null default auth.uid()` | Same query with `qual` and `with_check`; a probe as another account (`supabase-rls-probes.md`, B and C) is refused |
+| Privileged fields (`role`, `status`, `plan`, verified flags) out of the user's reach, with an **explicit refusal**: either a `before insert or update` trigger that sets the default on insert and raises an exception when a non-privileged caller changes the field, or column privileges (`revoke update on public.<table> from authenticated;` then `grant update (<editable columns>) on public.<table> to authenticated;`; revoking one column alone does not override a table-wide grant). Prefer a refused request over a `200` that silently ignores the field | `select grantee, column_name, privilege_type from information_schema.column_privileges where table_schema = 'public' and table_name = '<table>';` no `UPDATE` on privileged columns for `authenticated` or `anon`; probe D returns a `4xx` |
+| Profiles created by the server, not the browser: a trigger on `auth.users` inserts the profile with the default role; no client `insert` policy on the profile table | Sign-up of a test account sending a privileged role gets the default role |
+| Access to another account's data only through a relation row that the **data owner** creates or activates: the related account's `select` policy is `using (exists (select 1 from public.<links> l where l.<owner_column> = <table>.<owner_column> and l.<grantee_column> = (select auth.uid()) and l.status = 'active'))`; on the link table, `insert` and the `update` that sets `status` are allowed only with `with check (<owner_column> = (select auth.uid()))` | Probe C as the related account (creating or activating its own link) is refused; probe B before activation returns `0` |
+| `security definer` only when needed, and hardened: `set search_path = ''` with schema-qualified names; caller identity from `auth.uid()`, never a parameter; returns only the needed columns; `revoke execute on function public.<fn>(<args>) from public, anon;` then `grant execute ... to authenticated;` where intended; keep such functions out of exposed schemas when the client does not call them | `select p.proname, p.proconfig from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosecdef;` every `proconfig` sets `search_path`; `information_schema.routine_privileges` shows no unintended `EXECUTE` |
+| Views in exposed schemas created `with (security_invoker = true)` | `select relname, reloptions from pg_class where relnamespace = 'public'::regnamespace and relkind = 'v';` |
+| Second factor for sensitive roles: TOTP MFA enabled in Auth, and a `restrictive` policy on the tables those roles reach that requires `(select auth.jwt() ->> 'aal') = 'aal2'` for them | A session of that role without the second factor reads `0` rows (probe B) |
+| Size and shape limits on client-written columns: `alter table public.<table> add constraint <table>_data_size check (octet_length(<column>::text) <= <limit>);` and `jsonb_typeof(<column>) = 'object'` where the shape matters | An oversized insert is refused with code `23514` |
+| Auth settings (dashboard, left to a person if you have no access): minimum password length 12 or more, leaked-password protection on, e-mail confirmation on, a dedicated SMTP sender for production (the built-in one is rate-limited and meant for testing), rate limits kept | Values noted in the final answer; a 9-character password is refused at sign-up |
+
+Tooling: the dashboard's Security Advisor (RLS disabled, mutable `search_path`, `security definer` views), pgTAP for policy tests.
+
+After hardening, replay the probes of `appsec-review/references/supabase-rls-probes.md` from the same test accounts, then run `appsec-review` in `verify` mode on the report.
+
 ## Shell, PowerShell, Python quick wins
 
 | Change | Check |

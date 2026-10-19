@@ -1,8 +1,8 @@
 ---
 name: appsec-harden
-description: Use when asked to fix findings from a security report, apply security fixes, harden a repository, its CI workflows, HTTP headers, cookies or dependency policy, or execute the hand-off section of an appsec-review report.
+description: Use when asked to fix findings from a security report, apply security fixes, harden a repository, its CI workflows, HTTP headers, cookies, dependency policy or database access rules (Supabase row-level security, RLS), or execute the hand-off section of an appsec-review report.
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # appsec-harden
@@ -12,7 +12,7 @@ Applies security fixes one at a time, proves each one, and leaves a trail a revi
 ## Input
 
 - **A report** (usually from `appsec-review`): fix its findings, in severity order, using each finding's Fix and "Done when".
-- **A baseline request** ("harden the CI", "add security headers"): apply the matching baseline from `references/baselines.md`, as a list of changes treated like findings.
+- **A baseline request** ("harden the CI", "add security headers", "secure the Supabase policies"): apply the matching baseline from `references/baselines.md` (GitHub Actions, HTTP headers and cookies, repository hygiene, secrets in code, Supabase RLS, shell and script quick wins), as a list of changes treated like findings.
 
 ## Loop, for each change
 
