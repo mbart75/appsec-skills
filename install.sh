@@ -78,7 +78,10 @@ skills=()
 if [ -n "$skills_arg" ]; then
   IFS=',' read -r -a wanted <<< "$skills_arg"
   for s in "${wanted[@]}"; do
-    [ -f "$src/$s/SKILL.md" ] || die "unknown skill: $s (available: ${skills_available[*]})"
+    # Exact names only: a value with a path (appsec-x/../..) must not reach rm -rf below.
+    found=0
+    for a in "${skills_available[@]}"; do [ "$s" = "$a" ] && found=1; done
+    [ "$found" -eq 1 ] || die "unknown skill: $s (available: ${skills_available[*]})"
     skills+=("$s")
   done
 else
