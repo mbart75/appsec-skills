@@ -1,6 +1,6 @@
 # Supabase RLS probes
 
-Ready-to-paste verification probes for the authorized-tests phase of `live-target.md`, when the browser talks to Supabase directly. They check that row-level security isolates accounts. Read `live-target.md` first: the authorization, the test-account setup and the table that turns each result into a reading are there, not repeated here.
+Ready-to-paste verification probes for the authorized-tests phase of `live-target.md`, when the browser talks to Supabase directly. They check that row-level security isolates accounts. Read `live-target.md` first: the authorization, the test-account setup and the table that turns each result into a reading are there, not repeated here. Probes show behaviour for the accounts used; the policies themselves are checked with `supabase-rls.md`.
 
 Rules of use:
 

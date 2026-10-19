@@ -2,7 +2,7 @@
 name: appsec-harden
 description: Use when asked to fix findings from a security report, apply security fixes, harden a repository, its CI workflows, HTTP headers, cookies or dependency policy, or execute the hand-off section of an appsec-review report.
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # appsec-harden

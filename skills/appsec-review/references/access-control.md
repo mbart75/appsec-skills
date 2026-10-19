@@ -35,6 +35,7 @@ When the browser talks to the database directly, the database *is* the API, and 
 - `for update` and `for insert` need `with check`, not only `using`, or a user can write rows they cannot read.
 - Server code connecting with the owner or `service_role` role bypasses RLS: then the server code must do the checks itself.
 - Firebase: rules like `allow read, write: if true;` or `if request.auth != null` (any logged-in user) on user data are the same flaw.
+- Supabase: the full list of what to verify in the policies, each with the query that answers it, is in `supabase-rls.md`.
 
 ## Reporting
 

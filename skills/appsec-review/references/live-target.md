@@ -8,7 +8,7 @@ Use when the review has a URL but no repository, or when tests are run against a
 |---|---|---|
 | 1. Passive | What any visitor's browser receives: response headers, TLS, the HTML and every shipped script (read them: routes, table names, roles, keys), source maps, cookies and storage before consent, third-party requests, `robots.txt`, `/.well-known/security.txt`. Decode any key found (a Supabase JWT `role` of `service_role` in the browser is Critical). Note the version of every shipped library (banner comment, file name, `jQuery.fn.jquery` in the console) and check it with `<this skill's folder>/scripts/cve-priority.py <out_dir> --package` | Nothing: this is ordinary browsing. Start here while authorization and code are requested |
 | 2. Authorized tests | Signed-in requests and crafted requests to the API, with test accounts | The owner's written authorization, with an explicit scope (below) |
-| 3. Code or policies | The definitive check of everything phases 1 and 2 could not prove | Read access to the repository, or the exported rules |
+| 3. Code or policies | The definitive check of everything phases 1 and 2 could not prove (for Supabase: `supabase-rls.md`) | Read access to the repository, or the exported rules |
 
 ## Authorization
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 (2026-10-19)
+
+- `appsec-review`: `references/supabase-rls.md`, what to verify in Supabase policies, each item with the read-only query that answers it: RLS enabled on every exposed table; ownership tied to `auth.uid()`; `with check` pinning the owner on insert and update; upserts covered on both sides; permissive policies combined with OR; privileged columns (`role`, `status`) not writable by the user; no authorization on user-editable metadata; relation rows created by the party who gives access; `security definer` functions (fixed `search_path`, identity from `auth.uid()`, minimal return, execute grants); views with `security_invoker`; `aal2` for sensitive roles; size and shape limits on JSON and text columns. Linked from `access-control.md`, `live-target.md` (phase 3), `supabase-rls-probes.md` and the skill's reference table; fixes go to `appsec-harden`, live confirmation to `supabase-rls-probes.md`.
+- Bench `bench/deps/`: dependency manifests stored as `*.fixture` so that GitHub's dependency graph raises no alerts for these deliberately outdated versions; `setup.sh` restores their names in the blind copy.
+- Regression check on bench v1: 36/37 (V37 missed, as in every version), no false positive, no secret leaked; the report names the skill version from `metadata.version`.
+
 ## 0.5.0 (2026-10-19)
 
 - `appsec-review`: `references/supabase-rls-probes.md`, four console probes for the authorized-tests phase on a Supabase back end, run by a person from test accounts: read reach per table (session versus public key, counts only), another account's rows (filtered on a victim that holds data), a write that must be refused (undone by primary key, with the number of rows removed reported) and a protected field (judged on the returned row, restored if it changed). Linked from `live-target.md` and the skill's reference table. Generic placeholders only.

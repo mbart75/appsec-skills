@@ -11,4 +11,4 @@ Ledgerly is a small fictional invoicing tool: a Node.js web app and a Java repor
 | `ejs` 3.1.6 | `web/package-lock.json` | Yes: query parameters are spread into the render options | No |
 | `lodash` 4.17.15 | `web/package-lock.json` | No: only `_.get` is used | No, and several of its CVEs have a high EPSS |
 
-`setup.sh` builds a blind copy. `scenario.md` holds the prompt and the rubric, written before any run. `expected.yaml` is the answer key.
+Manifests are stored as `*.fixture` so that the repository's dependency graph raises no alerts for them; `setup.sh` builds a blind copy with their real names. `scenario.md` holds the prompt and the rubric, written before any run. `expected.yaml` is the answer key.
