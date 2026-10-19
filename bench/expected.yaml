@@ -394,6 +394,17 @@ flaws:
     modes: [full]
     note: Found by the appsec-review run of 2026-10-16 on secure-app, where it had been left unfixed. In secure-app the call is now inside try/except.
 
+  - id: V38
+    title: CI checkout keeps the GitHub token in the git config of a job that runs pull request code
+    file: .github/workflows/pr-check.yml
+    anchor: "      - uses: actions/checkout@v7"
+    cwe: CWE-522
+    ref: zizmor artipacked, OWASP A03:2025
+    severity_min: Low
+    scanners: [zizmor, review]
+    modes: [full, pre-launch]
+    note: Present since the first version and fixed in secure-app (persist-credentials false), but missing from this key until the appsec-review run of 2026-10-20 reported it. Credit it when the report names persisted checkout credentials, alone or inside the V22 or V24 finding.
+
 # For bench/secure-app. Reporting any of these as a vulnerability is a false positive.
 secure_app_traps:
   - id: T01

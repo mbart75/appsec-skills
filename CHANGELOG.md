@@ -2,7 +2,7 @@
 
 ## 0.7.2 (unreleased)
 
-- `appsec-review` workflow: **a finding does not close a file**. Once code holds a finding, it is read again for availability, error handling, data exposure and logic. Bench v1's V37 (one bad upload stops the thumbnail job for everyone, in the same function as two command-execution flaws) was missed by every earlier review (0 of 8) and is now found in 2 of 3 runs. A checklist row for batch jobs had changed nothing and was dropped; see `bench/batch/results.md`.
+- `appsec-review` workflow: **a finding does not close a file**. Once code holds a finding, it is read again for availability, error handling, data exposure and logic. Bench v1's V37 (one bad upload stops the thumbnail job for everyone, in the same function as two command-execution flaws) was missed by every earlier review (0 of 8) and is now found in 2 of 3 runs; the adjudicated run scored 37/37 with no false positive. Bench v1 gains V38 (checkout credentials persisted in a job that runs pull request code), present since the first version and fixed in `secure-app`, but missing from the key. A checklist row for batch jobs had changed nothing and was dropped; see `bench/batch/results.md`.
 
 Security fixes, found by running `appsec-review` on this repository (scanners found nothing in the shipped scripts; all three were found by reading them):
 
@@ -100,6 +100,7 @@ Recall is out of the number of seeded flaws at the time of the run. Full mode, s
 | 2026-10-16 | none (baseline) | Claude Haiku 5.5 | vulnerable | 36/36 | n/a | 0 | Report outside the repository without being told |
 | 2026-10-16 | appsec-review draft | Claude Haiku 5.5 | vulnerable | 35/36 | n/a | 0 | 34 found, 2 rated below the floor at the time (floor later lowered to Low for V28 and V32, see key notes). Every finding had location, scenario, fix, "Done when" and status; no secret leaked |
 | 2026-10-16 | appsec-review draft | Claude Haiku 5.5 | secure | n/a | 0.5 | 1 | Anon key listed as an Info finding while judged "public by design"; one speculative finding. Found a real flaw (now V37). Led to the "work order" placement rule |
+| 2026-10-20 | appsec-review 0.7.2 (a finding does not close a file) | Claude Haiku 5.5 | vulnerable | 37/37 | n/a | 0 | First full score: V37 found (Low). Two valid new findings: persisted checkout credentials in the PR workflow (added to the key as V38) and the missing `.gitignore` behind V35. Adjudicated by a separate agent |
 | 2026-10-19 | appsec-review 0.4.0 (KEV and EPSS triage) | Claude Haiku 5.5 | vulnerable | 36/37 | n/a | 0 | Only V37 missed again; a few minor valid extras folded into existing findings; no lockfile in TinyShop, so the dependency finding says no version could be checked |
 | 2026-10-19 | appsec-review 0.3.0 (live-target reference) | Claude Haiku 5.5 | vulnerable | 36/37 | n/a | 0 | Regression check after the live-target change: only V37 missed (worker loop without error handling); one accepted Low residual; no secret leaked; `Authorization` and `Testing` rows filled "not applicable" |
 | 2026-10-16 | appsec-review + placement rule | Claude Haiku 5.5 | secure | n/a | 0 | 0 | Anon key moved to "done well" and the scanner appendix. 16 findings, all valid or accepted residuals; three accepted residuals rated Medium instead of Low. Copy predates the V37 fix, so V37 was reported again |
