@@ -20,9 +20,10 @@ set -uo pipefail
 usage() { echo "usage: bash run-scanners.sh <repo_dir> <out_dir> [--history] [--verify-secrets] [--offline]" >&2; exit 2; }
 
 [ $# -ge 2 ] || usage
-repo="$(cd "$1" 2>/dev/null && pwd)" || { echo "repository not found: $1" >&2; exit 2; }
+repo="$(cd "$1" 2>/dev/null && pwd -P)" || { echo "repository not found: $1" >&2; exit 2; }
 # Resolve the output path without creating it yet: the check below must come first.
-out_parent="$(cd "$(dirname "$2")" 2>/dev/null && pwd)" || { echo "parent of output directory not found: $2" >&2; exit 2; }
+# Physical paths (pwd -P): a symlink must not hide that the output lands inside the repository.
+out_parent="$(cd "$(dirname "$2")" 2>/dev/null && pwd -P)" || { echo "parent of output directory not found: $2" >&2; exit 2; }
 out="$out_parent/$(basename "$2")"
 shift 2
 
