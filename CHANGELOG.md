@@ -2,6 +2,13 @@
 
 ## 0.7.2 (unreleased)
 
+Security fixes, found by running `appsec-review` on this repository (scanners found nothing in the shipped scripts; all three were found by reading them):
+
+- **`run-scanners.sh`: the reviewed folder's path could inject PowerShell commands** (Medium). The PSScriptAnalyzer step placed the path inside the `pwsh -Command` text. A folder named with a quote and a trailing comment, such as the top folder of an archive supplied by a third party, ran arbitrary PowerShell on the reviewer's machine when `pwsh` and PSScriptAnalyzer were installed. Paths now reach PowerShell through environment variables. Proven with a harmless marker before and after the fix. Update if you review code you did not write and have PSScriptAnalyzer installed.
+- `install.sh --skills` accepted path segments (Low): a value like `appsec-x/../<dir>` passed the name check and could aim the replace or uninstall step outside the skills folder. Only exact skill names are accepted now, as in `install.ps1`.
+- `run-scanners.sh` refused outputs inside the reviewed repository by comparing logical paths (Low): an output path through a symlink to the repository was accepted. Physical paths are compared now.
+- `cve-priority.py` keeps advisory summaries on one line.
+
 - Bench `bench/rls-sql/`: the Supabase SQL published in the skills now runs on a real PostgreSQL 17 in tests. The `appsec-harden` RLS baseline is checked by behaviour, as each account (28 checks, including the column-privilege pitfall and `aal2`), and the 13 read-only queries of `supabase-rls.md` and `baselines.md` are checked to run and to flag known misconfigurations. A mutation check proves the bench fails when the baseline is broken. Closes the "SQL never run" limit of 0.6.0 and 0.7.0.
 
 ## 0.7.1 (2026-10-20)
