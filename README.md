@@ -1,5 +1,7 @@
 # appsec-skills
 
+[![checks](https://github.com/mbart75/appsec-skills/actions/workflows/checks.yml/badge.svg)](https://github.com/mbart75/appsec-skills/actions/workflows/checks.yml) [![release](https://img.shields.io/github/v/release/mbart75/appsec-skills)](https://github.com/mbart75/appsec-skills/releases/latest) [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+
 Security skills for AI coding agents: design security in before coding, review code the way a security engineer would, fix findings one proven step at a time, and check French legal requirements before launch. Every output is a document that any other AI, or a person, can pick up.
 
 Works with any agent that reads the open `SKILL.md` format: Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI, OpenCode. Chat assistants get a single-file version.

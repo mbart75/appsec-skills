@@ -34,7 +34,7 @@ Confidence, separately: **High** (code path read end to end), **Medium** (likely
 | Commit | <short sha or "uncommitted changes"> |
 | Mode | <diff / full / pre-launch / verify> |
 | Scope | <paths reviewed, what was excluded and why> |
-| Reviewed by | appsec-review <version>, <agent and model> |
+| Reviewed by | appsec-review <version: `metadata.version` in this skill's SKILL.md, never copied from an earlier report>, <agent and model of this pass> |
 | Scanners run | <list> |
 | Scanners missing | <list with install command, or "none"> |
 | Authorization | <live target only: who, date, channel, scope (roles or areas, reads or writes, production or copy)> |

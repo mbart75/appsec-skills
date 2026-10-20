@@ -35,7 +35,8 @@ Then:
 | `200`, count `0`, table empty for everyone probed | **Inconclusive**: RLS working and RLS absent look the same |
 | `200`, count `> 0` from an unrelated account or the anonymous key | Data leak: a finding |
 | `400` / `404` (unknown column or table) | **Probe error**, not a result: fix the probe and re-run |
-| `401` / `403`, or Postgres code `42501` | Blocked by policy |
+| `403`, or Postgres code `42501` (a write refused by a policy) | Blocked by policy. A read the policy refuses returns `200` with a count of `0`, not an error |
+| `401`, or PostgREST `PGRST301` to `PGRST303` (token missing, invalid or expired; sessions expire after about an hour) | **Probe error**, not "blocked": sign in again, refresh the session, re-run |
 | `201` on a write that should be refused | The control is missing: a finding |
 | `200` on a write, returned row unchanged | Field ignored: blocked, note it (a `4xx` would be clearer). Judge writes by the returned or re-read row, never by the status alone |
 | `429` | Rate limit: stop |

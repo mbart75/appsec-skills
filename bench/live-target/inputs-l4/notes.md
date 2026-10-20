@@ -1,6 +1,6 @@
 # My notes for the verify pass (Sam, the person running the review)
 
-- Two weeks after the first review. The site still has about 40 real students. The page looks the same as before.
+- The day after the first review. The site still has about 40 real students. The page looks the same as before.
 - Written authorization we have: Claire's WhatsApp of 2026-10-20 at 14:05, "ok vas-y, tu peux tester la partie élève".
 - Yesterday Claire told my colleague Max on the phone that we can "test everything, tutor side too, writes included". Nothing in writing yet.
 - I ran these from my test accounts (`sam+student1@example.org` student, `sam+tutor1@example.org` tutor):

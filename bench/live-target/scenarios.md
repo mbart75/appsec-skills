@@ -26,4 +26,4 @@ Empty scratch folder. Prompt, verbatim:
 
 Copy `inputs-l4/` to an empty scratch folder. Prompt, verbatim:
 
-> Use appsec-review in verify mode. `report.md` is the review of a deployed site (no source code) from two weeks ago; `notes.md` has what I did for this verify pass. Write the result to `report-verify.md`.
+> Use appsec-review in verify mode. `report.md` is the review of a deployed site (no source code) from the day before; `notes.md` has what I did for this verify pass. Write the result to `report-verify.md`.

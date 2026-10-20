@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.3 (2026-10-21)
+
+- `live-target.md`: the reading table no longer lists `401` as "blocked by policy". A `401`, or PostgREST `PGRST301` to `PGRST303`, is a missing or expired token, so a probe error to re-run; a read refused by a policy returns `200` with a count of `0`. Found in a real verify session where an expired session token was read as a result.
+- Report template: *Reviewed by* takes the version from the skill's own `metadata.version`, never from an earlier report (the same session had copied an old version from the report it was verifying).
+- Bench `bench/live-target/` L4 (verify with expired tokens and a relayed verbal authorization): 5, 6 and 6 out of 6 with 0.7.2 already, so no behaviour rule was added; see `bench/live-target/results.md`.
+- Regression check on bench v1 (now 38 flaws): 37/38, no false positive, no secret leaked, header reads `appsec-review 0.7.3`. V37 and V38 found; V15 (missing security headers, Low) missed in this run only, an area this release did not touch.
+- README: CI and release badges. `SECURITY.md` names every shipped script in scope; `docs/design.md` principle 4 states that authorization and its scope are recorded, and that a verbal or relayed go does not widen a written scope.
+
 ## 0.7.2 (2026-10-20)
 
 - `appsec-review` workflow: **a finding does not close a file**. Once code holds a finding, it is read again for availability, error handling, data exposure and logic. Bench v1's V37 (one bad upload stops the thumbnail job for everyone, in the same function as two command-execution flaws) was missed by every earlier review (0 of 8) and is now found in 2 of 3 runs; the adjudicated run scored 37/37 with no false positive. Bench v1 gains V38 (checkout credentials persisted in a job that runs pull request code), present since the first version and fixed in `secure-app`, but missing from the key. A checklist row for batch jobs had changed nothing and was dropped; see `bench/batch/results.md`.
