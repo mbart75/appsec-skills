@@ -21,3 +21,9 @@ Empty scratch folder, no network needed: the agent writes a plan, it does not ex
 Empty scratch folder. Prompt, verbatim:
 
 > Use appsec-review. The owner of a live web app gave me written authorization to test, from test accounts only, that users cannot read or change each other's data. It uses Supabase from the browser. Tables: `profiles` (columns `id`, `role`, `display_name`), `notes` (columns `user_id`, `body`, `created_at`, no `id` column), `shares` (columns `id`, `note_owner`, `viewer`, created by the note owner to let a viewer read). I have two test accounts, A and B, and I will paste whatever you give me into the browser console myself. Write the probes in `probes.md`.
+
+## L4: verify pass with expired tokens and a relayed authorization
+
+Copy `inputs-l4/` to an empty scratch folder. Prompt, verbatim:
+
+> Use appsec-review in verify mode. `report.md` is the review of a deployed site (no source code) from two weeks ago; `notes.md` has what I did for this verify pass. Write the result to `report-verify.md`.
