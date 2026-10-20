@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.2 (unreleased)
+## 0.7.2 (2026-10-20)
 
 - `appsec-review` workflow: **a finding does not close a file**. Once code holds a finding, it is read again for availability, error handling, data exposure and logic. Bench v1's V37 (one bad upload stops the thumbnail job for everyone, in the same function as two command-execution flaws) was missed by every earlier review (0 of 8) and is now found in 2 of 3 runs; the adjudicated run scored 37/37 with no false positive. Bench v1 gains V38 (checkout credentials persisted in a job that runs pull request code), present since the first version and fixed in `secure-app`, but missing from the key. A checklist row for batch jobs had changed nothing and was dropped; see `bench/batch/results.md`.
 
