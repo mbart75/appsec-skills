@@ -22,7 +22,7 @@ block="$(awk -v id="$case_id" '
 field() { printf '%s\n' "$block" | awk -v k="$1" '$1 == k":" { print $2; exit }'; }
 repo="$(field repo)"
 commit="$(field "$variant")"
-[ -n "$repo" ] && [ -n "$commit" ] || { echo "incomplete case: $case_id" >&2; exit 1; }
+if [ -z "$repo" ] || [ -z "$commit" ]; then echo "incomplete case: $case_id" >&2; exit 1; fi
 
 tmp="${TMPDIR:-/tmp}"
 fetch="$(mktemp -d "${tmp%/}/fetch.XXXXXX")"
