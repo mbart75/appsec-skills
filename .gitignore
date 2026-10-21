@@ -15,12 +15,6 @@ appsec-report*.md
 # Local agent tooling and session artifacts
 .claude/
 
-# Personal working notes (they live outside this repository)
-Transmission.md
-transmissions/
-NOTES-ENTRETIEN.md
-blueprint*.md
-
 # Build output
 dist/
 build/
