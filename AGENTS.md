@@ -2,6 +2,8 @@
 
 This repository contains security skills for AI coding agents.
 
+`CLAUDE.md` is a symbolic link to this file, for Claude Code versions that only read `CLAUDE.md`: edit `AGENTS.md` only.
+
 ## Using the skills
 
 If your environment loads skills natively, install the folders under `skills/` in your skills directory (see `README.md`). Otherwise, when the user asks for one of the tasks below, read the matching `SKILL.md` and follow it, reading the reference files it points to as needed.
