@@ -214,7 +214,45 @@ fi
 # --- Infrastructure as code and containers ----------------------------------------
 if has_files -name '*.tf' -o -name 'Dockerfile' -o -name '*.yaml' -o -name '*.yml'; then
   if have checkov; then
-    run checkov checkov.json sh -c 'checkov -d "$1" --quiet --compact -o json > "$2"' _ "$repo" "$out/checkov.json"
+    # The reviewed repository must not configure Checkov. Its .checkov.yaml (or .yml) can import
+    # Python (external-checks-dir, external-checks-git) and hide findings (skip-check, ...);
+    # --config-file adds to it instead of replacing it. Checkov reads that file from the scanned
+    # folder, then from the folder it runs in, so it scans a copy without it, from an empty folder
+    # (which also keeps its .external_modules cache out of the repository). Inline #checkov:skip
+    # comments cannot be turned off: they are listed for the reviewer.
+    settings="$out/checkov-repo-settings.txt"
+    {
+      find "$repo" -path '*/node_modules' -prune -o -path '*/.git' -prune -o \
+        \( -name '.checkov.yaml' -o -name '.checkov.yml' \) -print | sed 's/^/Settings file (ignored): /'
+      grep -rIl --exclude-dir=.git --exclude-dir=node_modules -e 'checkov:skip' "$repo" 2>/dev/null \
+        | sed 's/^/Mentions checkov:skip (kept): /'
+    } > "$settings"
+    if grep -q '^Settings file' "$settings"; then
+      record "checkov settings" "IGNORED" "$settings  (the repository's own Checkov configuration: report it, look at what it skips and loads)"
+    fi
+    if grep -q '^Mentions' "$settings"; then
+      record "checkov skips" "LISTED" "$settings  (inline #checkov:skip comments stay in force: report them, look at what they hide)"
+    fi
+    [ -s "$settings" ] || rm -f "$settings"
+
+    work="$out/.checkov-work"
+    rm -rf "$work"
+    mkdir -p "$work/cwd"
+    src="$repo"
+    if find "$repo" -path '*/node_modules' -prune -o -path '*/.git' -prune -o \
+      \( -name '.checkov.yaml' -o -name '.checkov.yml' \) -print -quit | grep -q .; then
+      src="$work/tree"
+      mkdir -p "$src"
+      find "$repo" -mindepth 1 -maxdepth 1 ! -name .git ! -name node_modules -exec cp -RP {} "$src/" \;
+      find "$src" \( -name '.checkov.yaml' -o -name '.checkov.yml' \) -exec rm -f {} +
+    fi
+    run checkov checkov.json sh -c 'cd "$1" && checkov -d "$2" --quiet --compact -o json > "$3"' _ "$work/cwd" "$src" "$out/checkov.json"
+    if [ "$src" != "$repo" ] && [ -s "$out/checkov.json" ]; then
+      # Absolute paths in the report name the copy: point them back at the repository.
+      FROM="$src" TO="$repo" awk '{ o = ""; while ((i = index($0, ENVIRON["FROM"])) > 0) { o = o substr($0, 1, i - 1) ENVIRON["TO"]; $0 = substr($0, i + length(ENVIRON["FROM"])) } print o $0 }' \
+        "$out/checkov.json" > "$work/checkov.json" && mv "$work/checkov.json" "$out/checkov.json"
+    fi
+    rm -rf "$work"
   else
     missing checkov "pipx install checkov | brew install checkov"
   fi

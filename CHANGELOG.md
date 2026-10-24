@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Security fix:
+
+- **`run-scanners.sh`: Checkov no longer reads the reviewed repository's configuration.** Checkov loaded a `.checkov.yaml` or `.checkov.yml` from the scanned repository (and from the folder it was run in), and that file can load Python checks and skip findings. Checkov now scans a copy without these files, from an empty folder, so the configuration of the reviewed repository has no effect and nothing it contains is imported. Reported paths still name the repository. The files found are listed in `checkov-repo-settings.txt` and flagged `IGNORED` in the summary, as for gitleaks. Inline `#checkov:skip` comments cannot be turned off: they are listed there too (`checkov skips LISTED`), and `SKILL.md` asks the reviewer to name them and look at what they hide. Present since `run-scanners.sh` first ran `checkov -d`, v0.2.0. Update if you review code you did not write and have Checkov installed.
+- New test `tests/run-scanners-checkov.sh`, run in CI with Checkov 3.3.29 (pinned): two throwaway repositories carry a hostile configuration whose only effect is a marker file in the test's temporary folder; the test fails without the fix and passes with it. Removing either the copy or the empty working folder makes it fail again.
+- Bench v1 not re-run for this change (it only touches the Checkov step of the script and one paragraph of `SKILL.md`).
+
 ## 0.7.4 (2026-10-24)
 
 Security fix:
