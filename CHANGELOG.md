@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.4 (unreleased)
+
+Security fix:
+
+- **`run-scanners.sh`: the reviewed repository could hide its secrets from gitleaks** (Medium). gitleaks ran without `--config`, so it obeyed the reviewed repository's `.gitleaks.toml`: `[allowlist] paths = [".*"]` turned "leaks found: 1" into "no leaks found". A `.gitleaksignore` in the repository or in the current folder, `gitleaks:allow` comments and the `GITLEAKS_CONFIG` and `GITLEAKS_CONFIG_TOML` variables had the same effect. gitleaks now runs with a reference config shipped with the skill (`scripts/gitleaks.toml`, gitleaks' default rules and nothing else), `--ignore-gitleaks-allow`, an empty ignore path and both variables unset. gitleaks 8.30 reads `<target>/.gitleaksignore` whatever the flags say, so the files scan runs on a copy without that file when it exists, and the history scan on a bare mirror clone (every ref, no working tree, a fresh git config). Reported paths are now relative to the repository root. The repository's own settings are listed in `gitleaks-repo-settings.txt` and flagged `IGNORED` in the summary; `SKILL.md` asks the reviewer to name them in the report and look where they point. Update if you review code you did not write.
+- New test `tests/run-scanners-gitleaks.sh`, run in CI with gitleaks 8.30.1 (checksum pinned): a throwaway repository uses every one of these ways at once; the test fails with 0.7.3 (no secret found, in files or history) and passes now. Removing any one of `--config`, `--ignore-gitleaks-allow`, the copy or the mirror makes it fail again.
+- Regression check: same gitleaks findings as 0.7.3 on `bench/vulnerable-app` and `bench/secure-app`. On this repository, the history scan now also reports the bench's seeded tokens that this repository's own `.gitleaks.toml` excluded, as intended. Bench v1 was not re-run with an agent: `bench/setup.sh` commits the seeded secrets in a scratch repository, which a gitleaks pre-commit hook installed through `init.templateDir` refuses.
+
 ## 0.7.3 (2026-10-21)
 
 - `live-target.md`: the reading table no longer lists `401` as "blocked by policy". A `401`, or PostgREST `PGRST301` to `PGRST303`, is a missing or expired token, so a probe error to re-run; a read refused by a policy returns `200` with a count of `0`. Found in a real verify session where an expired session token was read as a result.

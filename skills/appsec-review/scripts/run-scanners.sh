@@ -63,17 +63,65 @@ run() { # name, output file, command...
 missing() { record "$1" "MISSING" "install: $2"; }
 skipped() { record "$1" "not relevant" "$2"; }
 
+here="$(cd "$(dirname "$0")" && pwd)"
+
 is_git=0
 git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 && is_git=1
 
 # --- Secrets ------------------------------------------------------------------
+# The reviewed repository must not be able to hide its own secrets. gitleaks would obey
+# its .gitleaks.toml, a .gitleaksignore (in the repository or the current folder),
+# gitleaks:allow comments and the GITLEAKS_CONFIG and GITLEAKS_CONFIG_TOML variables.
+# So: the reference config shipped next to this script, the comments ignored, the ignore
+# path set to an empty folder, and since gitleaks 8.30 still reads <target>/.gitleaksignore
+# whatever the flags say, the scans run on copies without it. gitleaks runs from inside
+# the scanned folder, so reported paths are relative to the repository root.
+# The repository's own settings are listed for the reviewer: information, not settings.
 if have gitleaks; then
-  run gitleaks gitleaks-files.json gitleaks dir "$repo" --redact --no-banner \
-    --report-format json --report-path "$out/gitleaks-files.json" --exit-code 0
-  if [ "$history" -eq 1 ] && [ "$is_git" -eq 1 ]; then
-    run "gitleaks history" gitleaks-history.json gitleaks git "$repo" --redact --no-banner \
-      --report-format json --report-path "$out/gitleaks-history.json" --exit-code 0
+  settings="$out/gitleaks-repo-settings.txt"
+  {
+    for var in GITLEAKS_CONFIG GITLEAKS_CONFIG_TOML; do
+      [ -n "${!var:-}" ] && echo "Environment variable $var was set (ignored)"
+    done
+    find "$repo" -path '*/node_modules' -prune -o -path '*/.git' -prune -o \
+      \( -name '.gitleaks.toml' -o -name '.gitleaksignore' \) -print | sed 's/^/Settings file (ignored): /'
+    grep -rIl --exclude-dir=.git --exclude-dir=node_modules -e 'gitleaks:allow' "$repo" 2>/dev/null \
+      | sed 's/^/Mentions gitleaks:allow (ignored): /'
+  } > "$settings"
+  if [ -s "$settings" ]; then
+    record "gitleaks settings" "IGNORED" "$settings  (the repository's own exclusions: report them, look where they point)"
+  else
+    rm -f "$settings"
   fi
+  unset GITLEAKS_CONFIG GITLEAKS_CONFIG_TOML
+
+  work="$out/.gitleaks-work"
+  rm -rf "$work"
+  mkdir -p "$work/no-ignore"
+  gl_flags=(--config "$here/gitleaks.toml" --gitleaks-ignore-path "$work/no-ignore" --ignore-gitleaks-allow
+    --redact --no-banner --report-format json --exit-code 0)
+
+  src="$repo"
+  if [ -e "$repo/.gitleaksignore" ] || [ -L "$repo/.gitleaksignore" ]; then
+    # Copy everything but .git (which gitleaks dir skips) and the root .gitleaksignore.
+    src="$work/tree"
+    mkdir -p "$src"
+    find "$repo" -mindepth 1 -maxdepth 1 ! -name .git ! -name .gitleaksignore -exec cp -RP {} "$src/" \;
+  fi
+  run gitleaks gitleaks-files.json sh -c 'cd "$1" && shift && exec "$@"' _ "$src" \
+    gitleaks dir . "${gl_flags[@]}" --report-path "$out/gitleaks-files.json"
+
+  if [ "$history" -eq 1 ] && [ "$is_git" -eq 1 ]; then
+    # A bare mirror has every ref of the repository and no working tree, hence no
+    # .gitleaksignore, and a fresh git config instead of the reviewed one.
+    if git clone --quiet --mirror --no-local -- "$repo" "$work/history.git" >"$out/gitleaks-history.json.stderr" 2>&1; then
+      run "gitleaks history" gitleaks-history.json sh -c 'cd "$1" && shift && exec "$@"' _ "$work/history.git" \
+        gitleaks git . "${gl_flags[@]}" --report-path "$out/gitleaks-history.json"
+    else
+      record "gitleaks history" "FAILED" "could not mirror the repository for the scan, see $out/gitleaks-history.json.stderr"
+    fi
+  fi
+  rm -rf "$work"
 else
   missing gitleaks "brew install gitleaks | https://github.com/gitleaks/gitleaks"
 fi
@@ -147,7 +195,6 @@ if has_files -name 'package.json' -o -name 'requirements*.txt' -o -name 'pyproje
   if have osv-scanner; then
     run osv-scanner osv.json osv-scanner scan source -r "$repo" --format json --output "$out/osv.json"
     # Known exploited (CISA KEV) and likely exploited (EPSS) first.
-    here="$(cd "$(dirname "$0")" && pwd)"
     if have python3 && [ -s "$out/osv.json" ]; then
       if [ "$offline" -eq 1 ]; then
         run cve-priority cve-priority.md python3 -I "$here/cve-priority.py" "$out" --offline
