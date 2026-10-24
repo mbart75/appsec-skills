@@ -2,7 +2,8 @@
 # The sh -c snippets take their values as positional parameters on purpose.
 # shellcheck disable=SC2016
 # Detects which security scanners are installed, runs the ones relevant to the
-# repository, and writes their raw output to a directory OUTSIDE the repository.
+# repository, and writes their output to a directory OUTSIDE the repository, with the
+# secret values found by gitleaks, TruffleHog and Bandit removed.
 #
 #   bash run-scanners.sh <repo_dir> <out_dir> [--history] [--verify-secrets] [--offline]
 #
@@ -126,13 +127,42 @@ else
   missing gitleaks "brew install gitleaks | https://github.com/gitleaks/gitleaks"
 fi
 
+# TruffleHog obeys trufflehog:ignore comments, and PRE_COMMIT, HUSKY, HUSKY_GIT_PARAMS or
+# TRUFFLEHOG_PRE_COMMIT turn the scan into a pre-commit check: HEAD..HEAD (nothing), verified
+# results only, the repository's own git config trusted. So: --no-ignore-tag, the variables
+# unset, and both listed for the reviewer. Its JSON keeps the secret in Raw, RawV2 and
+# SecretParts, so it goes through redact-findings.py before it reaches the disk.
 if [ "$history" -eq 1 ] && [ "$is_git" -eq 1 ]; then
-  if have trufflehog; then
-    if [ "$verify" -eq 1 ]; then
-      run trufflehog trufflehog.json sh -c 'trufflehog git "file://$1" --json --no-update > "$2"' _ "$repo" "$out/trufflehog.json"
+  if have trufflehog && have python3; then
+    settings="$out/trufflehog-repo-settings.txt"
+    {
+      for var in PRE_COMMIT HUSKY HUSKY_GIT_PARAMS TRUFFLEHOG_PRE_COMMIT; do
+        [ -n "${!var:-}" ] && echo "Environment variable $var was set (ignored)"
+      done
+      grep -rIl --exclude-dir=.git --exclude-dir=node_modules -e 'trufflehog:ignore' "$repo" 2>/dev/null \
+        | sed 's/^/Mentions trufflehog:ignore (ignored): /'
+    } > "$settings"
+    if [ -s "$settings" ]; then
+      record "trufflehog settings" "IGNORED" "$settings  (the repository's own exclusions: report them, look where they point)"
     else
-      run trufflehog trufflehog.json sh -c 'trufflehog git "file://$1" --json --no-update --no-verification > "$2"' _ "$repo" "$out/trufflehog.json"
+      rm -f "$settings"
     fi
+    unset PRE_COMMIT HUSKY HUSKY_GIT_PARAMS TRUFFLEHOG_PRE_COMMIT
+
+    th_flags=(--json --no-update)
+    [ "$verify" -eq 1 ] || th_flags+=(--no-verification)
+    # --no-ignore-tag exists since TruffleHog 3.97.5. Older versions still scan, but obey the comments.
+    # (A variable, not a pipe into grep -q: pipefail would turn the early exit into a failure.)
+    th_help="$(trufflehog git --help 2>&1)"
+    case "$th_help" in
+      *'--[no-]no-ignore-tag'*) th_flags+=(--no-ignore-tag); th_name=trufflehog ;;
+      *) record "trufflehog" "OUTDATED" "obeys trufflehog:ignore comments: update to 3.97.5 or later"
+         th_name="trufflehog (old)" ;;
+    esac
+    run "$th_name" trufflehog.json bash -c 'set -o pipefail; trufflehog git "file://$1" "${@:4}" | python3 -I "$2" trufflehog > "$3"' \
+      _ "$repo" "$here/redact-findings.py" "$out/trufflehog.json" "${th_flags[@]}"
+  elif have trufflehog; then
+    record "trufflehog" "NOT RUN" "python3 is needed to redact the secrets from its output"
   else
     missing trufflehog "brew install trufflehog | https://github.com/trufflesecurity/trufflehog"
   fi
@@ -154,8 +184,12 @@ else
 fi
 
 if has_files -name '*.py'; then
-  if have bandit; then
-    run bandit bandit.json bandit -r "$repo" -f json -o "$out/bandit.json" -q -x '*/node_modules/*,*/.venv/*'
+  if have bandit && have python3; then
+    # Bandit copies the flagged lines, and a hardcoded password's value, into its JSON.
+    run bandit bandit.json bash -c 'set -o pipefail; bandit -r "$1" -f json -q -x "*/node_modules/*,*/.venv/*" | python3 -I "$2" bandit > "$3"' \
+      _ "$repo" "$here/redact-findings.py" "$out/bandit.json"
+  elif have bandit; then
+    record "bandit" "NOT RUN" "python3 is needed to redact the secrets from its output"
   else
     missing bandit "brew install bandit | pipx install bandit"
   fi

@@ -14,7 +14,7 @@ Sources: OWASP Secrets Management Cheat Sheet, OWASP Top 10 2025 A03 (Software S
 
 **A leaked secret is fixed by rotating it, not by deleting it.** Rewriting history is optional clean-up; revoking the key at its issuer is the fix. Say so in every secret finding, and name every secret to rotate.
 
-Exclusions written by the repository (`.gitleaks.toml` allowlists, `.gitleaksignore`, `gitleaks:allow` or `trufflehog:ignore` comments) are claims to check, not verdicts: judge each excluded match like any other, and say in the report which exclusions exist.
+Exclusions written by the repository (`.gitleaks.toml` allowlists, `.gitleaksignore`, `gitleaks:allow` or `trufflehog:ignore` comments) are claims to check, not verdicts: judge each excluded match like any other, and say in the report which exclusions exist. `run-scanners.sh` ignores them and lists them in `gitleaks-repo-settings.txt` and `trufflehog-repo-settings.txt`.
 
 Judging a match: decode before rating. A JWT's payload is base64: read its `role` or scope. A key prefix often tells test from live (`pk_` versus `sk_`, `_test_` versus `_live_`). An example value from documentation is not a secret.
 
