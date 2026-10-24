@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.5 (unreleased)
+## 0.7.5 (2026-10-24)
 
 Security fixes, same family as 0.7.4: the reviewed repository must not configure the scanners that review it.
 
