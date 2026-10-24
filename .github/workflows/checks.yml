@@ -59,6 +59,15 @@ jobs:
           tar -xzf "$bin/gitleaks.tar.gz" -C "$bin" gitleaks
           PATH="$bin:$PATH" bash tests/run-scanners-gitleaks.sh
 
+      - name: Checkov cannot be configured by the reviewed repository
+        env:
+          CHECKOV_VERSION: 3.3.29
+        run: |
+          venv="$(mktemp -d)"
+          python3 -m venv "$venv"
+          "$venv/bin/pip" install --quiet "checkov==${CHECKOV_VERSION}"
+          PATH="$venv/bin:$PATH" bash tests/run-scanners-checkov.sh
+
       - name: Supabase SQL on PostgreSQL
         run: PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)" bash bench/rls-sql/run.sh
 
