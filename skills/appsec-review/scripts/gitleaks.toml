@@ -1,0 +1,8 @@
+# Reference configuration for run-scanners.sh: gitleaks' own default rules, nothing else.
+# Passed with --config so that a .gitleaks.toml in the reviewed repository, or the
+# GITLEAKS_CONFIG and GITLEAKS_CONFIG_TOML variables, cannot allowlist its secrets.
+# Do not add allowlists here: a false positive is judged in the report, not hidden.
+title = "appsec-review reference"
+
+[extend]
+useDefault = true

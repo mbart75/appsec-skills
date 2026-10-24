@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
 
       - name: ShellCheck (shipped and bench scripts; bench/vulnerable-app is flawed on purpose)
-        run: shellcheck install.sh scripts/*.sh skills/appsec-review/scripts/*.sh bench/setup.sh bench/*/setup.sh bench/rls-sql/run.sh
+        run: shellcheck install.sh scripts/*.sh skills/appsec-review/scripts/*.sh tests/*.sh bench/setup.sh bench/*/setup.sh bench/rls-sql/run.sh
 
       - name: Python
         run: |
@@ -46,6 +46,18 @@ jobs:
           test ! -e "$home/.codex/skills/appsec-review"
           pwsh -NoProfile -File install.ps1 -Dir "$home/custom[1]" -Yes
           test -f "$home/custom[1]/appsec-review/SKILL.md"
+
+      - name: Secret scan cannot be silenced by the reviewed repository
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          bin="$(mktemp -d)"
+          curl -fsSL -o "$bin/gitleaks.tar.gz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $bin/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf "$bin/gitleaks.tar.gz" -C "$bin" gitleaks
+          PATH="$bin:$PATH" bash tests/run-scanners-gitleaks.sh
 
       - name: Supabase SQL on PostgreSQL
         run: PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)" bash bench/rls-sql/run.sh
