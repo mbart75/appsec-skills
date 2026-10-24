@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.5 (unreleased)
+
+Security fixes, same family as 0.7.4:
+
+- **`run-scanners.sh`: the reviewed repository could hide its secrets from TruffleHog** (Medium). TruffleHog drops any finding whose line carries a `trufflehog:ignore` comment, so a reviewed repository could hide a secret in its files or its history with one comment. In addition, `PRE_COMMIT=1`, `HUSKY=1`, `HUSKY_GIT_PARAMS` or `TRUFFLEHOG_PRE_COMMIT=1` in the environment switch `trufflehog git` to pre-commit mode: it scans `HEAD..HEAD` (nothing), keeps verified results only and trusts the repository's git config, so the history scan reported nothing. TruffleHog now runs with `--no-ignore-tag` and without those variables. The comments and the variables found are listed in `trufflehog-repo-settings.txt` and flagged `IGNORED` in the summary, as for gitleaks. `--no-ignore-tag` exists since TruffleHog 3.97.5: older versions still run, and the summary says `trufflehog OUTDATED` (they obey the comments).
+- **`run-scanners.sh`: TruffleHog and Bandit outputs kept the secrets in clear** (Medium). TruffleHog's JSON holds the secret in `Raw`, `RawV2` and `SecretParts`; Bandit's holds the flagged lines in `code` and a hardcoded password's value in its message. The output folder is meant to be outside the repository, but it is still a file of live secrets left on disk, next to a report that must redact them. Neither tool can redact its own JSON, so both now go through `scripts/redact-findings.py` (standard library) before anything is written: those fields become `[REDACTED]`, the values found in them are removed from every other field, and file, line, commit and detector stay. Input that cannot be parsed is dropped, not copied. Without `python3`, TruffleHog and Bandit are reported `NOT RUN` rather than writing secrets. gitleaks already ran with `--redact`. On `bench/vulnerable-app`, `trufflehog.json` held the bench's seeded database password; it no longer does.
+- New test `tests/run-scanners-secrets.sh`, run in CI with TruffleHog 3.99.2 (checksum pinned) and Bandit 1.9.4 (nothing published in the last 7 days): a throwaway repository hides secrets with `trufflehog:ignore` in its files and history, and the scan runs once plainly and once with the four variables set; every file written must be free of the fake secret values, whatever scanners are installed. With 0.7.4: 10 of 13 checks fail (both hidden secrets missed, nothing found with the variables, `trufflehog.json` and `bandit.json` hold secrets). With this fix: 13/13, with TruffleHog 3.99.2 and 3.99.3. Removing `--no-ignore-tag`, the `unset`, or either redaction makes it fail again.
+- Regression check: same TruffleHog and Bandit findings as 0.7.4 on `bench/vulnerable-app` and `bench/secure-app` (detector, file, line; test, file, line). The gitleaks test still passes.
+- `SKILL.md` asks the reviewer to name the TruffleHog exclusions in the report like the gitleaks ones, and says that secret values are removed from scanner outputs. `SECURITY.md` names `redact-findings.py` in scope.
+- Bench v1 with an agent: not run yet for this change.
+
 ## 0.7.4 (2026-10-24)
 
 Security fix:

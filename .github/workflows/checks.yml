@@ -59,6 +59,22 @@ jobs:
           tar -xzf "$bin/gitleaks.tar.gz" -C "$bin" gitleaks
           PATH="$bin:$PATH" bash tests/run-scanners-gitleaks.sh
 
+      - name: TruffleHog cannot be silenced, no secret in scanner outputs
+        env:
+          TRUFFLEHOG_VERSION: 3.99.2
+          TRUFFLEHOG_SHA256: 3c7b0d1dc4278294269bfdd7594bca8bb28c78da0a4a06ad202ded37b48deca4
+        run: |
+          bin="$(mktemp -d)"
+          curl -fsSL -o "$bin/trufflehog.tar.gz" \
+            "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz"
+          echo "${TRUFFLEHOG_SHA256}  $bin/trufflehog.tar.gz" | sha256sum -c -
+          tar -xzf "$bin/trufflehog.tar.gz" -C "$bin" trufflehog
+          # Bandit and its dependencies: nothing published in the last 7 days.
+          python3 -m venv "$bin/venv"
+          "$bin/venv/bin/pip" install --quiet pip==26.2.1
+          "$bin/venv/bin/pip" install --quiet --uploaded-prior-to P7D bandit==1.9.4
+          PATH="$bin:$bin/venv/bin:$PATH" bash tests/run-scanners-secrets.sh
+
       - name: Supabase SQL on PostgreSQL
         run: PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)" bash bench/rls-sql/run.sh
 

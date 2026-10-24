@@ -2,7 +2,7 @@
 name: appsec-review
 description: Use when asked to review code for security, audit a repository, a pull request or a deployed site for vulnerabilities, check whether an app is safe to launch or to make public, find security issues before deploying, or verify that findings from a previous security report are fixed. Covers web apps, APIs, mobile apps, LLM features, CI workflows, Terraform, PowerShell, bash and Python.
 metadata:
-  version: "0.7.4"
+  version: "0.7.5"
 ---
 
 # appsec-review
@@ -30,7 +30,8 @@ Reading level: `expert` (default for security people) or `plain` (adds an "In pl
 2. **Run the scanners** that are installed:
    `bash <this skill's folder>/scripts/run-scanners.sh <repo> <output_dir> [--history]`
    The output directory must be outside the repository. Use `--history` in `full`, `pre-launch` and `verify`. If the script cannot run, run the available tools by hand. If none is installed, continue: the review below does not depend on them.
-   The secret scan ignores the repository's own gitleaks settings (`.gitleaks.toml`, `.gitleaksignore`, `gitleaks:allow` comments): code under review must not choose what it hides. When the summary shows `gitleaks settings IGNORED`, read `gitleaks-repo-settings.txt`, name those files in the report's Scope, and look at what they exclude: a broad exclusion is where a secret would hide.
+   The secret scan ignores the repository's own gitleaks and TruffleHog settings (`.gitleaks.toml`, `.gitleaksignore`, `gitleaks:allow` and `trufflehog:ignore` comments): code under review must not choose what it hides. When the summary shows `gitleaks settings IGNORED` or `trufflehog settings IGNORED`, read `gitleaks-repo-settings.txt` or `trufflehog-repo-settings.txt`, name those files in the report's Scope, and look at what they exclude: a broad exclusion is where a secret would hide. `trufflehog OUTDATED` means TruffleHog obeyed those comments: check the listed lines by hand.
+   Secret values are removed from the gitleaks, TruffleHog and Bandit outputs (`[REDACTED]`, or `REDACTED` for gitleaks); file and line remain, so read the value in the code when you need to judge it. TruffleHog and Bandit need `python3` for this and do not run without it.
    Known vulnerabilities in dependencies come out ranked by exploitation (CISA KEV, EPSS) in `cve-priority.md`; triage them with `references/secrets-supply-chain.md`, including libraries vendored outside any manifest.
 3. **Review by reading the code**, with the reference files that match the stack (table below). Read every entry point. Scanners find about half of real flaws; access control, business logic, LLM agency and authentication flows are found only this way.
    **A finding does not close a file.** Once a function or file holds a finding, read it again for the other kinds of flaw: availability (one bad input stopping a loop, a job or the process), error handling, data exposure, logic. Loud flaws hide quieter ones in the same code.
