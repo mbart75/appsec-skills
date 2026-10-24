@@ -76,4 +76,11 @@ router.post('/reset-password', authLimiter, async (req, res) => {
   res.json({ ok: true });
 });
 
+router.post('/logout', async (req, res) => {
+  // req.user is set only for a valid, unexpired session id.
+  if (req.user) await db.query('DELETE FROM sessions WHERE id = $1', [req.cookies.sid]);
+  res.clearCookie('sid', { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+  res.json({ ok: true });
+});
+
 module.exports = router;

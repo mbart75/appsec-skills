@@ -405,6 +405,50 @@ flaws:
     modes: [full, pre-launch]
     note: Present since the first version and fixed in secure-app (persist-credentials false), but missing from this key until the appsec-review run of 2026-10-20 reported it. Credit it when the report names persisted checkout credentials, alone or inside the V22 or V24 finding.
 
+  - id: V39
+    title: No password length rule at registration or password reset
+    file: server/routes/auth.js
+    anchor: "    hashPassword(password),"
+    cwe: CWE-521
+    ref: OWASP A07:2025
+    severity_min: Low
+    scanners: [review]
+    modes: [diff, full, pre-launch]
+    note: Present since the first version (an empty password is accepted) and fixed in secure-app (12 to 256 characters), but missing from this key until the appsec-review run of 2026-10-24 on 0.7.4 reported it (APPSEC-034). Credit it when the report names the missing length rule, alone or inside the V07 finding (password storage).
+
+  - id: V40
+    title: A malformed session cookie crashes the API under Express 4
+    file: server/session.js
+    anchor: "  if (sid) {"
+    cwe: CWE-248
+    ref: OWASP A10:2025
+    severity_min: Low
+    scanners: [review]
+    modes: [full]
+    note: "Any sid that is not a UUID makes Postgres reject the query; the rejected promise of this async middleware is not caught by Express 4, and Node stops on the unhandled rejection: one anonymous request takes the API down. Express 5 sends it to the error handler instead, and \"express\": \"*\" (V21) may install either. Missing from this key until the appsec-review run of 2026-10-24 on 0.7.4 reported it. Fixed in secure-app (Express 5 pinned, and a sid that is not a UUID is ignored)."
+
+  - id: V41
+    title: E-mail and password not validated at registration
+    file: server/routes/auth.js
+    anchor: "  await db.query('INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3)', ["
+    cwe: CWE-20
+    ref: OWASP A06:2025
+    severity_min: Low
+    scanners: [review]
+    modes: [diff, full]
+    note: Any value is stored as the e-mail (no type, shape, length or case check), and a password that is not a string makes the hashing throw. Missing from this key until the second appsec-review run of 2026-10-24 on 0.7.5 reported it. Fixed in secure-app (isEmail, isPassword, lower-cased e-mail). Credit the password part to V39 when the report splits them.
+
+  - id: V42
+    title: No logout, and sessions survive a password reset
+    file: server/routes/auth.js
+    anchor: "  res.json({ ok: rowCount === 1 });"
+    cwe: CWE-613
+    ref: OWASP A07:2025
+    severity_min: Low
+    scanners: [review]
+    modes: [diff, full, pre-launch]
+    note: A session lives its full seven days whatever the user does, so a stolen cookie keeps working after the victim resets the password. Missing from this key until the second appsec-review run of 2026-10-24 on 0.7.5 reported it. Fixed in secure-app (sessions deleted on reset, logout route). Credit it when the report names either half.
+
 # For bench/secure-app. Reporting any of these as a vulnerability is a false positive.
 secure_app_traps:
   - id: T01

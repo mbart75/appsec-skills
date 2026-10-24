@@ -20,6 +20,6 @@ If your environment loads skills natively, install the folders under `skills/` i
 - `bench/vulnerable-app/` is deliberately vulnerable test material. Never copy code from it, never "fix" it: its flaws are the answer key of the bench.
 - After any change to a skill, run the bench (`bench/score.md`, `bench/v2/README.md`) and record the result in `CHANGELOG.md`.
 - After editing `bench/`, run `python3 bench/check-key.py`.
-- After changing any Supabase SQL in the skills, run `bash bench/rls-sql/run.sh` (needs PostgreSQL 15+).
+- After changing any Supabase SQL in the skills, run `bash bench/rls-sql/run.sh` (needs PostgreSQL 15 or later, the first version with `security_invoker` views; CI runs it on the PostgreSQL of its Ubuntu 24.04 runner).
 - Shell scripts must pass `shellcheck`.
-- Everything in this repository is public and in English. No personal data, no real secrets, no reports of real vulnerabilities in other projects that are not already public.
+- Everything in this repository is public and in English, except what must be in French: the legal page templates and French legal terms of `appsec-compliance-fr`, and the French inputs of its bench. No personal data, no real secrets, no reports of real vulnerabilities in other projects that are not already public.

@@ -84,6 +84,9 @@ jobs:
           "$venv/bin/pip" install --quiet "checkov==${CHECKOV_VERSION}"
           PATH="$venv/bin:$PATH" bash tests/run-scanners-checkov.sh
 
+      - name: --offline keeps OSV-Scanner offline
+        run: bash tests/run-scanners-osv-offline.sh
+
       - name: Supabase SQL on PostgreSQL
         run: PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)" bash bench/rls-sql/run.sh
 
