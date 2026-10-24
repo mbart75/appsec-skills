@@ -7,7 +7,8 @@ dest="$(mktemp -d "${tmp%/}/review.XXXXXX")/receiptly"
 mkdir -p "$dest"
 cp -R "$here/app/." "$dest/"
 cd "$dest"
-git init -q -b main
+# Throwaway repository of seeded test material: created without hooks (--template=), never pushed.
+git init -q --template= -b main
 git config user.name "Receiptly dev"
 git config user.email "dev@receiptly.example"
 git config commit.gpgsign false

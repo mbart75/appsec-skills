@@ -23,7 +23,8 @@ dest="$(mktemp -d "${tmp%/}/review.XXXXXX")/tinyshop"
 mkdir -p "$dest"
 cd "$dest"
 
-git init -q -b main
+# Throwaway repository with fake secrets on purpose: created without hooks (--template=), never pushed.
+git init -q --template= -b main
 git config user.name "TinyShop dev"
 git config user.email "dev@tinyshop.example"
 git config commit.gpgsign false

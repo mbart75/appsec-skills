@@ -21,6 +21,10 @@ A skill that *seems* good is not the same as a skill *proven* good. This bench m
 | `deps/` | Triage of known vulnerabilities in dependencies by exploitation (KEV, EPSS) and reachability |
 | `threat-model/`, `harden/`, `compliance-fr/` | Scenarios and rubrics for the other three skills |
 
+## Scratch repositories have no git hooks
+
+Each `setup.sh` builds a throwaway repository with `git init --template=`, so a pre-commit hook installed through `init.templateDir` (a gitleaks hook, for instance) does not run there. These repositories hold seeded flaws, including fake secrets committed on purpose, live outside this repository and are never pushed. This is the only exception: never use `--no-verify`, and real repositories keep their hooks.
+
 ## Adding a flaw
 
 1. Add the vulnerable code to `vulnerable-app/` and its fix to `secure-app/`.

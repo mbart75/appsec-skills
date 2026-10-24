@@ -27,7 +27,8 @@ if [ -z "$repo" ] || [ -z "$commit" ]; then echo "incomplete case: $case_id" >&2
 tmp="${TMPDIR:-/tmp}"
 fetch="$(mktemp -d "${tmp%/}/fetch.XXXXXX")"
 trap 'rm -rf "$fetch"' EXIT
-git -C "$fetch" init -q
+# Throwaway repositories of third-party code at a vulnerable commit: created without hooks (--template=), never pushed.
+git -C "$fetch" init -q --template=
 git -C "$fetch" fetch -q --depth 1 "https://github.com/$repo.git" "$commit"
 git -C "$fetch" checkout -q FETCH_HEAD
 
@@ -35,7 +36,7 @@ git -C "$fetch" checkout -q FETCH_HEAD
 dest="$(mktemp -d "${tmp%/}/review.XXXXXX")/project"
 mkdir -p "$dest"
 (cd "$fetch" && tar --exclude=.git -cf - .) | (cd "$dest" && tar -xf -)
-git -C "$dest" init -q -b main
+git -C "$dest" init -q --template= -b main
 git -C "$dest" config user.name "dev"
 git -C "$dest" config user.email "dev@example.invalid"
 git -C "$dest" config commit.gpgsign false

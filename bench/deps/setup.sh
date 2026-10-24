@@ -11,7 +11,8 @@ mkdir -p "$dest"
 cp -R "$here/app/." "$dest/"
 cd "$dest"
 find . -name '*.fixture' -type f | while IFS= read -r f; do mv "$f" "${f%.fixture}"; done
-git init -q -b main
+# Throwaway repository of seeded test material: created without hooks (--template=), never pushed.
+git init -q --template= -b main
 git config user.name "Ledgerly dev"
 git config user.email "dev@ledgerly.example"
 git config commit.gpgsign false
