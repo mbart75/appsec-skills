@@ -13,7 +13,7 @@ A skill that *seems* good is not the same as a skill *proven* good. This bench m
 | `expected.yaml` | The answer key. Never shown to the reviewing agent |
 | `check-key.py` | Verifies the key still matches the code. Run it after any edit |
 | `setup.sh` | Builds a blind scratch copy of one variant, outside this repository, with its own git history |
-| `score.md` | How to run a review and score it |
+| `score.md` | How to run a review, score it, and run the regression check before a release (models, number of runs, bar) |
 | `v2/` | Eight real advisories, reviewed at the commit before and after their fix |
 | `live-target/` | Reviewing a deployed app without its source: planning and recording authorized tests |
 | `rls-sql/` | Runs the Supabase SQL published in the skills on a local PostgreSQL: baseline behaviour and checklist queries |
