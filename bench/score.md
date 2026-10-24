@@ -61,3 +61,19 @@ Add a line to the results table in `CHANGELOG.md`:
 
 | Date | Skill version | Agent / model | Variant | Scanners | Recall | Precision | Trap hits | Notes |
 |---|---|---|---|---|---|---|---|---|
+
+## 6. Regression check before a release
+
+**Model**: Claude Haiku 5.5, for every release. It is the smallest model the skills target, so it shows what the skill itself brings: a larger model finds many flaws even with a weak skill and hides its gaps. Keeping the same model across releases keeps the runs comparable.
+
+**Runs**: a single run is not enough. On 2026-10-24, the same bench with the same method scored 38/38 and 36/38 on 0.7.4, and 35.5/38 and 36.5/38 on 0.7.5: one Haiku run can move by 2 points, and the flaws it misses change from run to run.
+- Run the vulnerable variant **at least twice** per release, each from a fresh blind copy and a fresh session, and adjudicate each run separately.
+- Add a **third run** when the first two differ by more than 1 point, or when their mean is within 1 point of the bar below.
+- Record every run, not only the best one.
+
+**Bar**: compare the **mean** of the release's runs with the mean of the previous release.
+- The release ships when its mean is no more than 1 point below the previous mean, with no false positive, no trap hit and no secret leaked in any run.
+- A flaw missed in **every** run of the new release but found in **every** run of the previous one is a regression, whatever the mean: find the cause before releasing.
+- A release that fixes a vulnerability may ship below the bar when the misses are outside the files it changes. Say so in the release notes, with every score (0.7.5 did).
+
+**Top model**: before a major version, and at least every few releases, add **one run with Claude Opus 5.5**. It measures what a full-size model gets with the skill, the way most people will use it. Record it on its own line and never average it with the Haiku runs.
