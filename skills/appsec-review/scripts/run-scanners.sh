@@ -10,7 +10,9 @@
 #   --history          also scan the whole git history for secrets (full mode)
 #   --verify-secrets   let TruffleHog test found secrets against their provider
 #                      (network call carrying the secret to its own issuer; off by default)
-#   --offline          do not fetch the CISA KEV catalog and EPSS scores
+#   --offline          no dependency lookups: OSV-Scanner matches against its local database
+#                      (download it beforehand with --download-offline-databases), and the
+#                      CISA KEV catalog and EPSS scores are not fetched
 #
 # Never installs anything. Never sends source code anywhere. Some tools download
 # rules or query public vulnerability databases with package names and versions;
@@ -227,7 +229,14 @@ fi
 if has_files -name 'package.json' -o -name 'requirements*.txt' -o -name 'pyproject.toml' -o -name 'go.mod' \
   -o -name 'Cargo.toml' -o -name 'pom.xml' -o -name 'Gemfile' -o -name 'composer.json' -o -name '*.lock' -o -name 'package-lock.json'; then
   if have osv-scanner; then
-    run osv-scanner osv.json osv-scanner scan source -r "$repo" --format json --output "$out/osv.json"
+    # OSV-Scanner sends package names and versions to osv.dev (and resolves Maven dependencies
+    # online). --offline stops that; without a local database it finds nothing, so say so.
+    osv_flags=(--format json --output "$out/osv.json")
+    [ "$offline" -eq 1 ] && osv_flags+=(--offline)
+    run osv-scanner osv.json osv-scanner scan source -r "$repo" "${osv_flags[@]}"
+    if [ "$offline" -eq 1 ] && grep -q 'no offline version of the OSV database' "$out/osv.json.stderr" 2>/dev/null; then
+      record "osv-scanner" "NO DATABASE" "nothing was checked: run osv-scanner scan source --offline-vulnerabilities --download-offline-databases -r <repo> once online"
+    fi
     # Known exploited (CISA KEV) and likely exploited (EPSS) first.
     if have python3 && [ -s "$out/osv.json" ]; then
       if [ "$offline" -eq 1 ]; then

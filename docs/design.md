@@ -15,8 +15,8 @@ Two audiences, same skills:
 
 These rules apply to every skill. They are the reason this repository exists rather than a list of prompts.
 
-1. **Agent-agnostic.** Skills use the open `SKILL.md` format (folder + YAML front matter with `name` and `description`), plain Markdown references and POSIX shell scripts. Instructions never name a tool specific to one agent ("ask the user", not "use the AskUserQuestion tool"). Works with Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI, OpenCode, and any agent that can read files.
-2. **Source code never leaves the machine unless it is already public.** No skill sends source code to a third-party service by default. Tools that query vulnerability databases with package names and versions are acceptable, and so is sending CVE identifiers to the FIRST EPSS API (the CISA KEV catalog is a plain download). For public repositories, the skills recommend the platform's free scanning (code scanning, secret scanning, dependency alerts).
+1. **Agent-agnostic.** Skills use the open `SKILL.md` format (folder + YAML front matter with `name` and `description`), plain Markdown references, Bash scripts and Python 3 helpers that use the standard library only. Instructions never name a tool specific to one agent ("ask the user", not "use the AskUserQuestion tool"). Works with Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI, OpenCode, and any agent that can read files.
+2. **The skills never send source code anywhere unless it is already public.** No skill or script sends source code to a third-party service. The agent running the skill sends what it reads to its own model provider; that is the agent's setting, which a skill cannot change. Tools that query vulnerability databases with package names and versions are acceptable, and so is sending CVE identifiers to the FIRST EPSS API (the CISA KEV catalog is a plain download). For public repositories, the skills recommend the platform's free scanning (code scanning, secret scanning, dependency alerts).
 3. **Tools are optional, never imposed.** A skill detects which scanners are installed, runs those, and lists the missing ones with their install command. It never installs anything without explicit consent. With zero tools installed, the skill still works as a guided manual review.
 4. **Active testing only against what you own.** No skill runs an active scanner (DAST, fuzzing, brute force) against a target unless the user confirms they own it or hold written authorization. The authorization and its scope (roles or areas, reads or writes, production or a copy) are recorded in the report; a verbal or relayed go does not widen a written scope until the owner confirms it in writing. Unauthorized testing is a criminal offence in most countries (France: Code pénal, art. 323-1).
 5. **Read-only by default.** Only `appsec-harden` modifies files, and only after the user approves a specific change. One change per commit, and the relevant check is re-run afterwards.
@@ -149,7 +149,7 @@ Detected and used when present. Default choices, by category:
 
 | Category | Default | Also supported |
 |---|---|---|
-| Secrets | gitleaks | TruffleHog (history, with live verification) |
+| Secrets | gitleaks | TruffleHog (history; live verification of found secrets only with `--verify-secrets`, off by default) |
 | Static analysis | Semgrep CE / Opengrep | CodeQL on public repositories |
 | Dependencies | OSV-Scanner | Trivy |
 | Malicious packages | Socket (free for open source) | |
@@ -162,7 +162,7 @@ Detected and used when present. Default choices, by category:
 | LLM applications | promptfoo | garak |
 | Accessibility | axe-core | |
 
-A helper script, `appsec-review/scripts/run-scanners.sh`, detects installed tools, runs them with safe defaults into an output directory outside the repository, and prints a summary of what ran and what was missing. POSIX shell, no network calls of its own.
+A helper script, `appsec-review/scripts/run-scanners.sh`, detects installed tools, runs them with safe defaults into an output directory outside the repository, and prints a summary of what ran and what was missing. Bash. It never uploads source code. Network use, all of it from the tools it runs: Semgrep and Trivy download their rules; OSV-Scanner sends package names and versions to the OSV database; `cve-priority.py` sends CVE identifiers to the EPSS API and downloads the KEV catalog; TruffleHog tests found secrets against their issuer only with `--verify-secrets`. `--offline` stops the OSV, EPSS and KEV lookups.
 
 ## 6. Test bench
 
