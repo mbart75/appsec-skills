@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.6 (2026-10-26)
 
 - **`run-scanners.sh`: PSScriptAnalyzer no longer reads the reviewed repository's settings.** Run without `-Settings`, PSScriptAnalyzer loaded a `PSScriptAnalyzerSettings.psd1` from the scanned repository, and that file can load PowerShell modules and exclude rules. It now runs with `-Settings @{}`, from an empty folder, so the settings of the reviewed repository have no effect and nothing they point to is loaded. The file found is listed in `psscriptanalyzer-repo-settings.txt` and flagged `IGNORED` in the summary, as for Checkov. Present since `run-scanners.sh` first ran PSScriptAnalyzer, v0.2.0. Update if you review code you did not write and have PowerShell 7 with PSScriptAnalyzer installed.
 - New test `tests/run-scanners-psscriptanalyzer.sh`, run in CI with PSScriptAnalyzer 1.25.0 (pinned): two throwaway repositories carry hostile settings whose only effect is a marker file in the test's temporary folder, one scanned from inside itself, one from another folder. With 0.7.5: 8 of 12 checks fail. With this fix: 12/12. Removing `-Settings @{}` makes it fail again; the empty folder is a second layer that `-Settings @{}` already covers, so removing it alone does not.
