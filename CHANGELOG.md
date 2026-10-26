@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.8 (2026-10-26)
 
 - **`appsec-review`: the reviewing agent keeps secret values out of what it reads.** In run 3 of the 0.7.7 regression check, the agent printed the history of `.env.production` with `git log -p` through its own `sed` filter, which missed one value: the bench's fake database password went into its context, and so to the model provider. `SKILL.md` now asks the agent to locate secrets with the redacted scanner outputs and with commits, paths and line numbers. A new recipe in `references/secrets-supply-chain.md` gives the commands for the facts a review needs without the value: which commits touched a secret file, which variables it held, a value's prefix and length, a JWT's claims. It also says how to keep a scanner's output masked when it is run by hand. Whether an agent follows the rule cannot be tested deterministically; the commands themselves can. New test `tests/secret-recipes.sh`, in CI, runs the published commands on the bench's blind copy and checks that each prints what it promises and none of the seeded secrets. A control proves the check catches a raw `git log -p`. Changing a published command to print the file makes the test fail.
 - **`run-scanners.sh`: PSScriptAnalyzer leaves a file when it finds nothing.** The summary said `ran`, but no `psscriptanalyzer.json` was written, and a reviewer re-ran it by hand. The output is now always a JSON array, `[]` for a clean scan. `tests/run-scanners-psscriptanalyzer.sh` gains a clean repository: that check fails on 0.7.7 and passes now.
