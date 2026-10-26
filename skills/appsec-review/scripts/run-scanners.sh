@@ -213,11 +213,28 @@ fi
 
 if has_files -name '*.ps1' -o -name '*.psm1'; then
   if have pwsh && pwsh -NoProfile -Command 'if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { exit 1 }' >/dev/null 2>&1; then
+    # The reviewed repository must not configure PSScriptAnalyzer. Without -Settings, it reads the
+    # PSScriptAnalyzerSettings.psd1 of the scanned folder, which can load PowerShell modules
+    # (CustomRulePath) and hide findings: -Settings @{} replaces it. It runs from an empty folder,
+    # since relative paths are resolved from the folder it runs in. The file is listed for the reviewer.
+    settings="$out/psscriptanalyzer-repo-settings.txt"
+    find "$repo" -path '*/node_modules' -prune -o -path '*/.git' -prune -o \
+      -iname 'PSScriptAnalyzerSettings.psd1' -print | sed 's/^/Settings file (ignored): /' > "$settings"
+    if [ -s "$settings" ]; then
+      record "psscriptanalyzer settings" "IGNORED" "$settings  (the repository's own PSScriptAnalyzer settings: report them, look at what they exclude and load)"
+    else
+      rm -f "$settings"
+    fi
+    work="$out/.psscriptanalyzer-work"
+    rm -rf "$work"
+    mkdir -p "$work"
     # Paths reach PowerShell through the environment, never inside the command text:
     # the reviewed folder's name is not trusted and could otherwise inject commands.
-    run psscriptanalyzer psscriptanalyzer.json env APPSEC_SCAN_REPO="$repo" APPSEC_SCAN_OUT="$out/psscriptanalyzer.json" \
+    run psscriptanalyzer psscriptanalyzer.json sh -c 'cd "$1" && shift && exec "$@"' _ "$work" \
+      env APPSEC_SCAN_REPO="$repo" APPSEC_SCAN_OUT="$out/psscriptanalyzer.json" \
       pwsh -NoProfile -Command \
-      'Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse | Select-Object RuleName, Severity, ScriptPath, Line, Message | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
+      'Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse -Settings @{} | Select-Object RuleName, Severity, ScriptPath, Line, Message | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
+    rm -rf "$work"
   else
     missing psscriptanalyzer "Install-Module PSScriptAnalyzer -Scope CurrentUser (PowerShell 7)"
   fi
