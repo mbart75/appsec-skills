@@ -492,3 +492,4 @@ secure_app_accepted:
   - ImageMagick policy hardening for the worker.
   - Remaining indirect prompt-injection risk from reviews (mitigated, not eliminated).
   - Front-end vendor library not committed (fixture limitation).
+  - scripts/Sync-Users.ps1 posts the whole HR staff record to the directory instead of the fields it needs (data minimisation, Info).

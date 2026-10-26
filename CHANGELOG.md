@@ -12,6 +12,17 @@ Public claims checked against the code and the recorded results, and corrected w
 - `docs/design.md`: Bash and Python scripts, not POSIX shell; the network use of `run-scanners.sh` listed tool by tool instead of "no network calls"; TruffleHog verifies secrets only with `--verify-secrets`. `SECURITY.md`: every piece of deliberately flawed bench material is out of scope, and so are the throwaway test repositories and bench v2's third-party projects. `AGENTS.md`: why PostgreSQL 15 (`security_invoker` views), and the French content that is not in English.
 - **Bench v1 key: 38 → 42 flaws.** Four valid findings reported by the runs of 2026-10-24 were missing from the key: V39 no password length rule (APPSEC-034 in the 0.7.4 run), V40 a malformed `sid` cookie that crashes the API under Express 4, V41 no validation of the e-mail and password at registration, V42 no logout and sessions kept after a password reset. `secure-app` already fixed V39, V41 and the reset half of V42, and V40 through Express 5; it now also ignores a `sid` that is not a UUID and has a logout route. `check-key.py`: 42 flaws, 0 problems. **Every earlier score is out of 38 (or fewer)**, including the 0.7.4 and 0.7.5 runs above; they are not rescored. The bench was not run again.
 
+- **Regression check on bench v1, `main` at `cc3e474` (before 0.7.6)**, method of `bench/score.md` section 6: Claude Haiku 5.5, fresh blind copy and fresh session per run, same scanners as 0.7.5, each run adjudicated by a separate agent (Claude Sonnet) against `expected.yaml`. Scores on the new 42-flaw key, and on V01–V38 to compare with earlier releases:
+
+  | Run | /42 | /38 (V01–V38) | Missed | Partial | False positives |
+  |---|---|---|---|---|---|
+  | 1 | 38.5 | 35 | V36, V37 | V03, V05 (rated Medium, floor High), V40 (open question only) | 1, Info: the user-sync script sends the whole staff record to the directory (`secure-app` does the same) |
+  | 2 | 38 | 35 | V15, V36, V37, V40 | none | 0 |
+  | 3 | 38.5 | 37 | V37, V39, V41 | V40 | 0 |
+  | **Mean** | **38.3** | **35.7** | | | |
+
+  0.7.5 mean on 38: 36 (35.5 and 36.5); 0.7.4 control: 36. The third run was added because the mean of the first two (35) sat on the bar (previous mean minus 1). Section 6, rule by rule: the mean is 0.3 point below 0.7.5, within the 1-point margin; no flaw was missed in every run that 0.7.5 found in every run (V37 is missed in all three, as in both 0.7.5 runs; V36, missed in runs 1 and 2, was found in run 3); no trap hit; no secret leaked in any report or scanner output (at most 4 characters kept). One finding in run 1, rated Info, first adjudicated as a false positive: `Sync-Users.ps1` posts the whole HR staff record to the directory. The maintainer classified it as **accepted** (data minimisation, Info; `secure-app` keeps the same code), and it is now listed in `secure_app_accepted`. With it accepted, every condition of section 6 is met. Run 2 also reported a missing `.gitignore` (valid, not in the key). Method change: the reviewing agents could not write files in this harness, so each returned its report as text and it was saved verbatim; run 2 first returned a summary and was asked for the full report in the same session. Cost per run: about 198,000 to 225,000 tokens and 7 to 9 minutes for the review, 106,000 to 119,000 tokens and about 1 minute for the adjudication.
+
 ## 0.7.5 (2026-10-24)
 
 Security fixes, same family as 0.7.4: the reviewed repository must not configure the scanners that review it.
