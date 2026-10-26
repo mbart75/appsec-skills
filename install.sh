@@ -18,8 +18,10 @@
 #   --dry-run          print the plan only
 #   --yes              do not ask for confirmation
 #
-# Safety: only folders named appsec-* are created, replaced or removed. No network,
-# no sudo, nothing outside the chosen skills folders is touched.
+# Safety: inside a skills folder, only folders named appsec-* are created, replaced or
+# removed. When installing, the chosen skills folder itself (and its parents) is created
+# if it is missing; uninstalling never creates it. No network, no sudo, nothing outside
+# the chosen skills folders is touched.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"

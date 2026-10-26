@@ -5,6 +5,8 @@
 #
 #   bash tests/run-scanners-checkov.sh [path/to/run-scanners.sh]
 #
+# Also checks that Trivy, absent from its PATH, is reported missing like the other scanners.
+#
 # Needs Checkov 3.3 or later. The "malicious" check only writes a marker file into the temporary
 # folder of this test. Nothing is read, sent or kept outside of it.
 set -uo pipefail
@@ -112,6 +114,13 @@ for report in data if isinstance(data, list) else [data]:
   check "$variant: inline skip listed (cannot be removed)" grep -qF "Mentions checkov:skip (kept): $repo/inline.tf" "$out/checkov-repo-settings.txt"
   check "$variant: the reviewed repository is left untouched" test -z "$(git -C "$repo" status --porcelain --ignored)"
   check "$variant: no working copy left in the output folder" test ! -e "$out/.checkov-work"
+  # Trivy is not on this PATH: like every absent scanner, it is listed with how to install it.
+  if command -v trivy >/dev/null; then
+    echo "skip - $variant: trivy is in /usr/bin or /bin, so it cannot be reported missing"
+  else
+    check "$variant: trivy, not installed, is listed as missing with its install command" \
+      grep -q '^trivy *MISSING *install: brew install trivy' "$tmp/summary-$variant.txt"
+  fi
 done
 
 if [ "$fail" -ne 0 ]; then
