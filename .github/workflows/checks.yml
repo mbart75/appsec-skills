@@ -87,6 +87,30 @@ jobs:
       - name: --offline keeps OSV-Scanner offline
         run: bash tests/run-scanners-osv-offline.sh
 
+      - name: Other scanners cannot be configured by the reviewed repository
+        env:
+          TRIVY_VERSION: 0.76.0
+          TRIVY_SHA256: e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7
+          OSV_SCANNER_VERSION: 2.7.0
+          OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+        run: |
+          bin="$(mktemp -d)"
+          curl -fsSL -o "$bin/trivy.tar.gz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $bin/trivy.tar.gz" | sha256sum -c -
+          tar -xzf "$bin/trivy.tar.gz" -C "$bin" trivy
+          curl -fsSL -o "$bin/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  $bin/osv-scanner" | sha256sum -c -
+          chmod +x "$bin/osv-scanner"
+          # Semgrep, Bandit, zizmor and their dependencies: nothing published in the last 7 days.
+          python3 -m venv "$bin/venv"
+          "$bin/venv/bin/pip" install --quiet pip==26.2.1
+          "$bin/venv/bin/pip" install --quiet --uploaded-prior-to P7D semgrep==1.181.0 bandit==1.9.4 zizmor==1.31.1
+          pwsh -NoProfile -Command 'Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force'
+          shellcheck --version
+          PATH="$bin:$bin/venv/bin:$PATH" APPSEC_TEST_REQUIRE_ALL=1 bash tests/run-scanners-repo-settings.sh
+
       - name: Supabase SQL on PostgreSQL
         run: PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)" bash bench/rls-sql/run.sh
 
