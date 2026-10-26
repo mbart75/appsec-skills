@@ -16,6 +16,37 @@ Sources: OWASP Secrets Management Cheat Sheet, OWASP Top 10 2025 A03 (Software S
 
 Exclusions written by the repository (`.gitleaks.toml` allowlists, `.gitleaksignore`, `gitleaks:allow` or `trufflehog:ignore` comments) are claims to check, not verdicts: judge each excluded match like any other, and say in the report which exclusions exist. `run-scanners.sh` ignores them and lists them in `gitleaks-repo-settings.txt` and `trufflehog-repo-settings.txt`.
 
+### Looking at a secret without reading it
+
+Everything you read goes into your context, and so to the model provider: a secret you print is a secret you leaked. Work from what is already masked, and ask git and the shell for the facts you need, not for the value.
+
+1. **Start from the redacted scanner outputs.** `run-scanners.sh` writes gitleaks, TruffleHog and Bandit results with the values removed and the file, line, commit and detector kept: that is enough to write the finding. If you run a scanner by hand, keep its output masked: `gitleaks ... --redact`, and pipe TruffleHog and Bandit JSON through `python3 -I <this skill's folder>/scripts/redact-findings.py trufflehog` (or `bandit`).
+2. **Place a secret in history by commits and paths**, never by patch:
+
+   ```bash
+   git log --all --date=short --format='%h %ad %s' --name-status -- <path>
+   ```
+
+3. **See which settings a secret file held**, names only:
+
+   ```bash
+   git show <commit>:<path> | cut -d= -f1
+   ```
+
+4. **See the shape of a value** (type, prefix, length) when you need it to judge test versus live, at most 4 characters:
+
+   ```bash
+   git show <commit>:<path> | awk -F= '{ print $1 "=" substr($2, 1, 4) "... (" length($2) " characters)" }'
+   ```
+
+5. **Read a token's claims, not the token**: a JWT's payload (its `role`, `ref`, `exp`) is not the credential, its signature is.
+
+   ```bash
+   grep -o 'eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*' <file> | head -n 1 | cut -d. -f2 | python3 -I -c 'import base64, sys; p = sys.stdin.read().strip(); print(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4)).decode())'
+   ```
+
+Files that exist to hold secrets (`.env*`, `*.pem`, `*.key`, `id_rsa*`, `*.tfvars`, `*.tfstate`, credential stores) are read this way too, in the working tree as in history. Source code is read in full as usual; when a hard-coded secret sits in it, report its file and line and quote the line with the value replaced by `[REDACTED]`.
+
 Judging a match: decode before rating. A JWT's payload is base64: read its `role` or scope. A key prefix often tells test from live (`pk_` versus `sk_`, `_test_` versus `_live_`). An example value from documentation is not a secret.
 
 ## Dependencies

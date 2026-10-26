@@ -449,6 +449,17 @@ flaws:
     modes: [diff, full, pre-launch]
     note: A session lives its full seven days whatever the user does, so a stolen cookie keeps working after the victim resets the password. Missing from this key until the second appsec-review run of 2026-10-24 on 0.7.5 reported it. Fixed in secure-app (sessions deleted on reset, logout route). Credit it when the report names either half.
 
+  - id: V43
+    title: Each deployment deletes the uploaded files
+    file: server/routes/uploads.js
+    anchor: "const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');"
+    cwe: CWE-664
+    ref: OWASP A06:2025
+    severity_min: Low
+    scanners: [review]
+    modes: [full]
+    note: "The upload folder (API and worker) sits inside the application tree, and scripts/deploy.sh empties the deployment target before copying a build, so every deployment erases the users' files. Distinct from V32: the cause is where user data lives, not an empty variable. Credit it when the report says a deployment wipes the uploads, alone or inside the V32 finding. Found by the secure-variant review of 2026-10-26 (0.7.6), where it had been left unfixed; present in both variants since the first version. Fixed in secure-app (UPLOAD_DIR outside the deployed tree)."
+
 # For bench/secure-app. Reporting any of these as a vulnerability is a false positive.
 secure_app_traps:
   - id: T01
