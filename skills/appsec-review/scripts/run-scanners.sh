@@ -75,7 +75,7 @@ git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 && is_git=1
 # and inline comments can hide findings, and some settings load code. Each scanner below gets
 # its settings from this script, runs on a copy without its settings files when no option turns
 # them off, and runs from an empty folder (Trivy reads its settings from the folder it runs in,
-# Checkov resolves relative paths from it).
+# PSScriptAnalyzer and Checkov resolve relative paths from it).
 neutral="$out/.scan-cwd"
 imposed="$out/.scan-settings"
 rm -rf "$neutral" "$imposed"
@@ -88,7 +88,7 @@ in_neutral() { (cd "$neutral" && exec "$@"); }
 list_settings() { # scanner, settings file names..., --, "comment:ignored" or "comment:kept"...
   local name="$1" file="$out/$1-repo-settings.txt" names=() m
   shift
-  while [ $# -gt 0 ] && [ "$1" != -- ]; do names+=(-o -name "$1"); shift; done
+  while [ $# -gt 0 ] && [ "$1" != -- ]; do names+=(-o -iname "$1"); shift; done
   shift
   {
     if [ "${#names[@]}" -gt 0 ]; then
@@ -290,14 +290,17 @@ fi
 
 if has_files -name '*.ps1' -o -name '*.psm1'; then
   if have pwsh && pwsh -NoProfile -Command 'if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { exit 1 }' >/dev/null 2>&1; then
+    # The reviewed repository must not configure PSScriptAnalyzer. Without -Settings, it reads the
+    # PSScriptAnalyzerSettings.psd1 of the scanned folder, which can load PowerShell modules
+    # (CustomRulePath) and hide findings: -Settings @{} replaces it. It runs from the empty folder,
+    # since relative paths are resolved from the folder it runs in. -IncludeSuppressed brings back
+    # the findings hidden by SuppressMessageAttribute, marked IsSuppressed.
+    list_settings psscriptanalyzer PSScriptAnalyzerSettings.psd1 -- 'SuppressMessage:ignored'
     # Paths reach PowerShell through the environment, never inside the command text:
     # the reviewed folder's name is not trusted and could otherwise inject commands.
-    # -IncludeSuppressed brings back the findings hidden by SuppressMessageAttribute, marked
-    # IsSuppressed.
-    list_settings psscriptanalyzer -- 'SuppressMessage:ignored'
-    run psscriptanalyzer psscriptanalyzer.json env APPSEC_SCAN_REPO="$repo" APPSEC_SCAN_OUT="$out/psscriptanalyzer.json" \
+    run psscriptanalyzer psscriptanalyzer.json in_neutral env APPSEC_SCAN_REPO="$repo" APPSEC_SCAN_OUT="$out/psscriptanalyzer.json" \
       pwsh -NoProfile -Command \
-      'Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse -IncludeSuppressed | Select-Object RuleName, Severity, ScriptPath, Line, Message, IsSuppressed | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
+      'Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse -Settings @{} -IncludeSuppressed | Select-Object RuleName, Severity, ScriptPath, Line, Message, IsSuppressed | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
   else
     missing psscriptanalyzer "Install-Module PSScriptAnalyzer -Scope CurrentUser (PowerShell 7)"
   fi

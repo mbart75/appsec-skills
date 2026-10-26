@@ -87,6 +87,13 @@ jobs:
       - name: --offline keeps OSV-Scanner offline
         run: bash tests/run-scanners-osv-offline.sh
 
+      - name: PSScriptAnalyzer cannot be configured by the reviewed repository
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+          bash tests/run-scanners-psscriptanalyzer.sh
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Other scanners cannot be configured by the reviewed repository
         env:
           TRIVY_VERSION: 0.76.0
