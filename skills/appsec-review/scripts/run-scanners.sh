@@ -294,13 +294,14 @@ if has_files -name '*.ps1' -o -name '*.psm1'; then
     # PSScriptAnalyzerSettings.psd1 of the scanned folder, which can load PowerShell modules
     # (CustomRulePath) and hide findings: -Settings @{} replaces it. It runs from the empty folder,
     # since relative paths are resolved from the folder it runs in. -IncludeSuppressed brings back
-    # the findings hidden by SuppressMessageAttribute, marked IsSuppressed.
+    # the findings hidden by SuppressMessageAttribute, marked IsSuppressed. The output is always
+    # a JSON array, [] when nothing is found, so a clean scan leaves a file and not a missing one.
     list_settings psscriptanalyzer PSScriptAnalyzerSettings.psd1 -- 'SuppressMessage:ignored'
     # Paths reach PowerShell through the environment, never inside the command text:
     # the reviewed folder's name is not trusted and could otherwise inject commands.
     run psscriptanalyzer psscriptanalyzer.json in_neutral env APPSEC_SCAN_REPO="$repo" APPSEC_SCAN_OUT="$out/psscriptanalyzer.json" \
       pwsh -NoProfile -Command \
-      'Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse -Settings @{} -IncludeSuppressed | Select-Object RuleName, Severity, ScriptPath, Line, Message, IsSuppressed | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
+      '$results = @(Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse -Settings @{} -IncludeSuppressed | Select-Object RuleName, Severity, ScriptPath, Line, Message, IsSuppressed); ConvertTo-Json -InputObject $results -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
   else
     missing psscriptanalyzer "Install-Module PSScriptAnalyzer -Scope CurrentUser (PowerShell 7)"
   fi

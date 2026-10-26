@@ -74,7 +74,19 @@ for variant in relative absolute; do
   check "$variant: no working folder left in the output folder" test ! -e "$out/.psscriptanalyzer-work"
 done
 
+# A clean script must still leave an output file: an empty array, not a missing file that reads
+# like a scanner that did not run.
+clean="$tmp/clean"
+mkdir -p "$clean"
+git init -q --template= "$clean"
+printf 'Write-Output "hello"\n' > "$clean/clean.ps1"
+bash "$script" "$clean" "$tmp/out-clean" --offline > "$tmp/summary-clean.txt" 2>&1
+echo "--- variant: clean"
+check "clean: the summary says PSScriptAnalyzer ran" grep -q '^psscriptanalyzer *ran ' "$tmp/summary-clean.txt"
+check "clean: the output is an empty JSON array" python3 -I -c 'import json, sys; sys.exit(json.load(open(sys.argv[1])) != [])' "$tmp/out-clean/psscriptanalyzer.json"
+check "one finding: the output is still an array" python3 -I -c 'import json, sys; sys.exit(not isinstance(json.load(open(sys.argv[1])), list))' "$tmp/out-relative/psscriptanalyzer.json"
+
 if [ "$fail" -ne 0 ]; then
-  for variant in relative absolute; do echo "--- run-scanners.sh summary ($variant)"; cat "$tmp/summary-$variant.txt"; done
+  for variant in relative absolute clean; do echo "--- run-scanners.sh summary ($variant)"; cat "$tmp/summary-$variant.txt"; done
   exit 1
 fi

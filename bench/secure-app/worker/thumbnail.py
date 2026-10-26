@@ -1,11 +1,13 @@
 """Creates thumbnails for uploaded images. Run every minute by cron."""
+import os
 import re
 import subprocess
 from pathlib import Path
 
 import yaml
 
-UPLOADS = Path(__file__).resolve().parent.parent / "uploads"
+# Same folder as the API, outside the deployed tree that scripts/deploy.sh replaces.
+UPLOADS = Path(os.environ.get("UPLOAD_DIR", "/var/lib/tinyshop/uploads"))
 THUMBS = UPLOADS / "thumbs"
 FORMATS = {".png": "png", ".jpg": "jpeg", ".jpeg": "jpeg"}
 SIZE = re.compile(r"\d{2,4}x\d{2,4}")

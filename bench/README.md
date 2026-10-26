@@ -8,7 +8,7 @@ A skill that *seems* good is not the same as a skill *proven* good. This bench m
 
 | Path | Role |
 |---|---|
-| `vulnerable-app/` | TinyShop, a small multi-stack shop with 42 seeded flaws: Express API, Supabase schema, vanilla JS front-end, Python worker, Terraform, PowerShell, bash, GitHub Actions, an LLM support bot with a tool |
+| `vulnerable-app/` | TinyShop, a small multi-stack shop with 43 seeded flaws: Express API, Supabase schema, vanilla JS front-end, Python worker, Terraform, PowerShell, bash, GitHub Actions, an LLM support bot with a tool |
 | `secure-app/` | The same application with every flaw fixed, plus a few traps: safe code that naive reviews or scanners flag |
 | `expected.yaml` | The answer key. Never shown to the reviewing agent |
 | `check-key.py` | Verifies the key still matches the code. Run it after any edit |

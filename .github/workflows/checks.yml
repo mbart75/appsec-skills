@@ -87,6 +87,9 @@ jobs:
       - name: --offline keeps OSV-Scanner offline
         run: bash tests/run-scanners-osv-offline.sh
 
+      - name: The commands for looking at a secret print no secret
+        run: bash tests/secret-recipes.sh
+
       - name: PSScriptAnalyzer cannot be configured by the reviewed repository
         shell: pwsh
         run: |

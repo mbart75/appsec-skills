@@ -6,7 +6,8 @@ const db = require('../db');
 const { requireUser } = require('../session');
 
 const router = express.Router();
-const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
+// User files live outside the deployed tree: scripts/deploy.sh replaces everything in it.
+const UPLOAD_DIR = process.env.UPLOAD_DIR || '/var/lib/tinyshop/uploads';
 const TYPES = {
   'image/png': { ext: '.png', magic: [0x89, 0x50, 0x4e, 0x47] },
   'image/jpeg': { ext: '.jpg', magic: [0xff, 0xd8, 0xff] },
