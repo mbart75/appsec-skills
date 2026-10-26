@@ -87,6 +87,13 @@ jobs:
       - name: --offline keeps OSV-Scanner offline
         run: bash tests/run-scanners-osv-offline.sh
 
+      - name: PSScriptAnalyzer cannot be configured by the reviewed repository
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+          bash tests/run-scanners-psscriptanalyzer.sh
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Supabase SQL on PostgreSQL
         run: PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)" bash bench/rls-sql/run.sh
 
