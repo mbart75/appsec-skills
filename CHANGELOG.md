@@ -1,12 +1,26 @@
 # Changelog
 
-## Unreleased
+## 0.7.8 (2026-10-26)
 
 - **`appsec-review`: the reviewing agent keeps secret values out of what it reads.** In run 3 of the 0.7.7 regression check, the agent printed the history of `.env.production` with `git log -p` through its own `sed` filter, which missed one value: the bench's fake database password went into its context, and so to the model provider. `SKILL.md` now asks the agent to locate secrets with the redacted scanner outputs and with commits, paths and line numbers. A new recipe in `references/secrets-supply-chain.md` gives the commands for the facts a review needs without the value: which commits touched a secret file, which variables it held, a value's prefix and length, a JWT's claims. It also says how to keep a scanner's output masked when it is run by hand. Whether an agent follows the rule cannot be tested deterministically; the commands themselves can. New test `tests/secret-recipes.sh`, in CI, runs the published commands on the bench's blind copy and checks that each prints what it promises and none of the seeded secrets. A control proves the check catches a raw `git log -p`. Changing a published command to print the file makes the test fail.
 - **`run-scanners.sh`: PSScriptAnalyzer leaves a file when it finds nothing.** The summary said `ran`, but no `psscriptanalyzer.json` was written, and a reviewer re-ran it by hand. The output is now always a JSON array, `[]` for a clean scan. `tests/run-scanners-psscriptanalyzer.sh` gains a clean repository: that check fails on 0.7.7 and passes now.
 - **`run-scanners.sh`: Trivy is listed when it is missing.** On a repository with IaC or container files, an absent Trivy left no line in the summary, while every other absent scanner is listed `MISSING` with its install command. It now shows `trivy MISSING install: brew install trivy | https://github.com/aquasecurity/trivy`. `tests/run-scanners-checkov.sh`, which runs with only Checkov on the PATH, checks it: 2 of 16 checks fail on `main` at `a34db16`, 16/16 now. The bench was not run again: this only adds a summary line.
 - Installer header comments say what the installers do: inside a skills folder, only `appsec-*` folders are created, replaced or removed, and installing also creates the chosen skills folder (and its parents) when it is missing, as the README says since 0.7.6; uninstalling never creates it. Checked with `install.sh` and `install.ps1` on throwaway folders. Comments only.
 - **Bench v1 key: 42 → 43 flaws.** V43: the upload folder sits inside the application tree, which `scripts/deploy.sh` empties on every deployment, so each deployment erases the users' files. Found by the review of `secure-app` in the 0.7.7 regression check, where it had been left unfixed; the same defect is in `vulnerable-app`. `secure-app` now keeps uploads outside the deployed tree (`UPLOAD_DIR`, default `/var/lib/tinyshop/uploads`, in the API and the worker). `check-key.py`: 43 flaws, 0 problems. Earlier scores are out of 42 (or 38 before 2026-10-24) and are not rescored. The bench was not run again.
+- **Regression check on bench v1, `main` at `a34db16` (before 0.7.8)**, method of `bench/score.md` section 6: Claude Haiku 5.5, a fresh blind copy and a fresh session per run, same scanners as 0.7.7, each run adjudicated by a separate agent (Claude Sonnet) against `expected.yaml`:
+
+  | Run | /43 | /42 (V01–V42) | /38 (V01–V38) | Missed | Partial | False positives |
+  |---|---|---|---|---|---|---|
+  | 1 | 39.5 | 39.5 | 38 | V39, V41, V43 | V40 (database error and 500 reported, not the process crash) | 0 |
+  | 2 | 39 | 39 | 38 | V39, V40, V41, V43 | none | 0 |
+  | **Mean** | **39.25** | **39.25** | **38** | | | |
+
+  0.7.7 means: 38.2 on 42, 36.0 on 38. No third run was needed: the two runs differ by 0.5 point, and the mean is 1.1 above 0.7.7 on 42. Section 6, rule by rule: no flaw was missed in every run that 0.7.7 found in every run (V39, V40 and V41 were each missed in at least one 0.7.7 run; V43 is new); no false positive, no trap hit, no secret in any report or scanner output. **The release meets the bar.** V37 (one bad upload stops the thumbnail job) was found in both runs, the first time in every run of a release. Both runs missed V43, added to the key in this release.
+- **The new rule on secrets, run by run.** Each agent's transcript was searched for the seeded values (database password and LLM key from the history, JWT signature, PowerShell password).
+  - **History secrets:** neither agent printed a patch or a `.env` file. Both used the reference's commands: variable names with `cut -d= -f1`, shapes with the `awk` prefix-and-length command. Neither the database password nor the LLM key reached either agent's context. In 0.7.7's run 3, the password had reached it through a `git log -p`.
+  - **Source files:** the JWT and the PowerShell password reached both agents when they read `public/config.js` and `scripts/Sync-Users.ps1` in full, as the rule allows for source code. Run 2's report says so in its Scope.
+  - **Scanner outputs:** they were read only through the redacted files.
+- Cost per run: about 201,000 to 206,000 tokens and 9 minutes for the review, 107,000 to 111,000 tokens and under 1 minute for the adjudication.
 
 ## 0.7.7 (2026-10-26)
 
