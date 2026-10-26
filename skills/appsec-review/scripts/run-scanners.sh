@@ -387,6 +387,8 @@ if has_files -name '*.tf' -o -name 'Dockerfile' -o -name '*.yaml' -o -name '*.ym
     list_settings trivy .trivyignore .trivyignore.yaml trivy.yaml -- 'trivy:ignore:kept'
     run "trivy config" trivy-config.json in_neutral trivy config --quiet --ignorefile '' --config '' \
       --format json --output "$out/trivy-config.json" "$repo"
+  else
+    missing trivy "brew install trivy | https://github.com/aquasecurity/trivy"
   fi
 else
   skipped checkov "no IaC or container files"

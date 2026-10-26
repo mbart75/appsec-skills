@@ -4,7 +4,9 @@
 
 .DESCRIPTION
     Without parameters, shows a menu of known agents (detected ones are marked) and asks for confirmation.
-    Only folders named appsec-* are created, replaced or removed. No network, no elevation.
+    Inside a skills folder, only folders named appsec-* are created, replaced or removed.
+    When installing, the chosen skills folder itself (and its parents) is created if it is missing;
+    uninstalling never creates it. No network, no elevation.
 
 .EXAMPLE
     ./install.ps1
