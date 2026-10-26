@@ -71,6 +71,62 @@ here="$(cd "$(dirname "$0")" && pwd)"
 is_git=0
 git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 && is_git=1
 
+# The reviewed repository must not configure the scanners that review it: their settings files
+# and inline comments can hide findings, and some settings load code. Each scanner below gets
+# its settings from this script, runs on a copy without its settings files when no option turns
+# them off, and runs from an empty folder (Trivy reads its settings from the folder it runs in,
+# PSScriptAnalyzer and Checkov resolve relative paths from it).
+neutral="$out/.scan-cwd"
+imposed="$out/.scan-settings"
+rm -rf "$neutral" "$imposed"
+mkdir -p "$neutral" "$imposed"
+in_neutral() { (cd "$neutral" && exec "$@"); }
+
+# Lists the repository's own settings for one scanner in <scanner>-repo-settings.txt, for the
+# reviewer: information, not settings. "(ignored)": this script turns them off; "(kept)": no
+# option does, and the summary says LISTED.
+list_settings() { # scanner, settings file names..., --, "comment:ignored" or "comment:kept"...
+  local name="$1" file="$out/$1-repo-settings.txt" names=() m
+  shift
+  while [ $# -gt 0 ] && [ "$1" != -- ]; do names+=(-o -iname "$1"); shift; done
+  shift
+  {
+    if [ "${#names[@]}" -gt 0 ]; then
+      find "$repo" -path '*/node_modules' -prune -o -path '*/.git' -prune -o \
+        \( "${names[@]:1}" \) -print | sed 's/^/Settings file (ignored): /'
+    fi
+    for m in "$@"; do
+      grep -rIl --exclude-dir=.git --exclude-dir=node_modules -e "${m%:*}" "$repo" 2>/dev/null \
+        | sed "s/^/Mentions ${m%:*} (${m##*:}): /"
+    done
+  } > "$file"
+  if grep -q '(ignored): ' "$file"; then
+    record "$name settings" "IGNORED" "$file  (the repository's own exclusions: report them, look where they point)"
+  fi
+  if grep -q '(kept): ' "$file"; then
+    record "$name skips" "LISTED" "$file  (inline suppressions this scanner cannot turn off: report them, look at what they hide)"
+  fi
+  [ -s "$file" ] || rm -f "$file"
+}
+
+# Copies the repository without .git, node_modules and the named settings files, for a scanner
+# that would otherwise obey them.
+copy_without() { # destination, file names...
+  local dest="$1" names=() n
+  shift
+  for n in "$@"; do names+=(-o -name "$n"); done
+  mkdir -p "$dest"
+  find "$repo" -mindepth 1 -maxdepth 1 ! -name .git ! -name node_modules -exec cp -RP {} "$dest/" \;
+  find "$dest" \( "${names[@]:1}" \) -exec rm -f {} +
+}
+has_named() { find "$repo" -path '*/node_modules' -prune -o -path '*/.git' -prune -o -name "$1" -print -quit | grep -q .; }
+
+# Absolute paths in a report made on a copy name the copy: point them back at the repository.
+repoint() { # report, copy
+  FROM="$2" TO="$repo" awk '{ o = ""; while ((i = index($0, ENVIRON["FROM"])) > 0) { o = o substr($0, 1, i - 1) ENVIRON["TO"]; $0 = substr($0, i + length(ENVIRON["FROM"])) } print o $0 }' \
+    "$1" > "$1.repointed" && mv "$1.repointed" "$1"
+}
+
 # --- Secrets ------------------------------------------------------------------
 # The reviewed repository must not be able to hide its own secrets. gitleaks would obey
 # its .gitleaks.toml, a .gitleaksignore (in the repository or the current folder),
@@ -171,25 +227,44 @@ if [ "$history" -eq 1 ] && [ "$is_git" -eq 1 ]; then
 fi
 
 # --- Static analysis ------------------------------------------------------------
-if have semgrep; then
-  # Semgrep keeps its log and settings under the home folder, which sandboxed agents
-  # (Codex, for one) cannot write: point it at a folder inside the output directory.
-  mkdir -p "$out/.semgrep-home"
-  run semgrep semgrep.json env XDG_CONFIG_HOME="$out/.semgrep-home" XDG_CACHE_HOME="$out/.semgrep-home" \
-    semgrep scan --config p/default --metrics=off --json \
-    --output "$out/semgrep.json" --quiet "$repo"
-elif have opengrep; then
-  run opengrep opengrep.json opengrep scan --config p/default --json \
-    --output "$out/opengrep.json" --quiet "$repo"
+if have semgrep || have opengrep; then
+  sg=semgrep; have semgrep || sg=opengrep
+  # nosemgrep comments: --disable-nosem. .semgrepignore files: the option that skips them is
+  # internal, so the scan runs on a copy without them (and without .git, so no .gitignore applies).
+  list_settings "$sg" .semgrepignore -- 'nosem:ignored'
+  sg_src="$repo"
+  if has_named .semgrepignore; then
+    sg_src="$out/.semgrep-work"
+    rm -rf "$sg_src"
+    copy_without "$sg_src" .semgrepignore
+  fi
+  if [ "$sg" = semgrep ]; then
+    # Semgrep keeps its log and settings under the home folder, which sandboxed agents
+    # (Codex, for one) cannot write: point it at a folder inside the output directory.
+    mkdir -p "$out/.semgrep-home"
+    run semgrep semgrep.json in_neutral env XDG_CONFIG_HOME="$out/.semgrep-home" XDG_CACHE_HOME="$out/.semgrep-home" \
+      semgrep scan --config p/default --metrics=off --disable-nosem --json \
+      --output "$out/semgrep.json" --quiet "$sg_src"
+  else
+    run opengrep opengrep.json in_neutral opengrep scan --config p/default --disable-nosem --json \
+      --output "$out/opengrep.json" --quiet "$sg_src"
+  fi
+  if [ "$sg_src" != "$repo" ]; then
+    [ -s "$out/$sg.json" ] && repoint "$out/$sg.json" "$sg_src"
+    rm -rf "$sg_src"
+  fi
 else
   missing semgrep "brew install semgrep | pipx install semgrep | or Opengrep"
 fi
 
 if has_files -name '*.py'; then
   if have bandit && have python3; then
+    # The repository's .bandit file is replaced by an empty one, # nosec comments are ignored.
+    list_settings bandit .bandit -- 'nosec:ignored'
+    printf '[bandit]\n' > "$imposed/bandit.ini"
     # Bandit copies the flagged lines, and a hardcoded password's value, into its JSON.
-    run bandit bandit.json bash -c 'set -o pipefail; bandit -r "$1" -f json -q -x "*/node_modules/*,*/.venv/*" | python3 -I "$2" bandit > "$3"' \
-      _ "$repo" "$here/redact-findings.py" "$out/bandit.json"
+    run bandit bandit.json in_neutral bash -c 'set -o pipefail; bandit -r "$1" -f json -q -x "*/node_modules/*,*/.venv/*" --ini "$4" --ignore-nosec | python3 -I "$2" bandit > "$3"' \
+      _ "$repo" "$here/redact-findings.py" "$out/bandit.json" "$imposed/bandit.ini"
   elif have bandit; then
     record "bandit" "NOT RUN" "python3 is needed to redact the secrets from its output"
   else
@@ -201,8 +276,10 @@ fi
 
 if has_files -name '*.sh' -o -name '*.bash'; then
   if have shellcheck; then
-    run shellcheck shellcheck.json sh -c \
-      'find "$1" -path "*/node_modules" -prune -o -path "*/.git" -prune -o -type f \( -name "*.sh" -o -name "*.bash" \) -print0 | xargs -0 shellcheck -f json > "$2"' \
+    # --norc: no .shellcheckrc. Inline "# shellcheck disable=" comments cannot be turned off.
+    list_settings shellcheck .shellcheckrc shellcheckrc -- 'shellcheck disable:kept'
+    run shellcheck shellcheck.json in_neutral sh -c \
+      'find "$1" -path "*/node_modules" -prune -o -path "*/.git" -prune -o -type f \( -name "*.sh" -o -name "*.bash" \) -print0 | xargs -0 shellcheck --norc -f json > "$2"' \
       _ "$repo" "$out/shellcheck.json"
   else
     missing shellcheck "brew install shellcheck"
@@ -215,26 +292,15 @@ if has_files -name '*.ps1' -o -name '*.psm1'; then
   if have pwsh && pwsh -NoProfile -Command 'if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { exit 1 }' >/dev/null 2>&1; then
     # The reviewed repository must not configure PSScriptAnalyzer. Without -Settings, it reads the
     # PSScriptAnalyzerSettings.psd1 of the scanned folder, which can load PowerShell modules
-    # (CustomRulePath) and hide findings: -Settings @{} replaces it. It runs from an empty folder,
-    # since relative paths are resolved from the folder it runs in. The file is listed for the reviewer.
-    settings="$out/psscriptanalyzer-repo-settings.txt"
-    find "$repo" -path '*/node_modules' -prune -o -path '*/.git' -prune -o \
-      -iname 'PSScriptAnalyzerSettings.psd1' -print | sed 's/^/Settings file (ignored): /' > "$settings"
-    if [ -s "$settings" ]; then
-      record "psscriptanalyzer settings" "IGNORED" "$settings  (the repository's own PSScriptAnalyzer settings: report them, look at what they exclude and load)"
-    else
-      rm -f "$settings"
-    fi
-    work="$out/.psscriptanalyzer-work"
-    rm -rf "$work"
-    mkdir -p "$work"
+    # (CustomRulePath) and hide findings: -Settings @{} replaces it. It runs from the empty folder,
+    # since relative paths are resolved from the folder it runs in. -IncludeSuppressed brings back
+    # the findings hidden by SuppressMessageAttribute, marked IsSuppressed.
+    list_settings psscriptanalyzer PSScriptAnalyzerSettings.psd1 -- 'SuppressMessage:ignored'
     # Paths reach PowerShell through the environment, never inside the command text:
     # the reviewed folder's name is not trusted and could otherwise inject commands.
-    run psscriptanalyzer psscriptanalyzer.json sh -c 'cd "$1" && shift && exec "$@"' _ "$work" \
-      env APPSEC_SCAN_REPO="$repo" APPSEC_SCAN_OUT="$out/psscriptanalyzer.json" \
+    run psscriptanalyzer psscriptanalyzer.json in_neutral env APPSEC_SCAN_REPO="$repo" APPSEC_SCAN_OUT="$out/psscriptanalyzer.json" \
       pwsh -NoProfile -Command \
-      'Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse -Settings @{} | Select-Object RuleName, Severity, ScriptPath, Line, Message | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
-    rm -rf "$work"
+      'Invoke-ScriptAnalyzer -Path $env:APPSEC_SCAN_REPO -Recurse -Settings @{} -IncludeSuppressed | Select-Object RuleName, Severity, ScriptPath, Line, Message, IsSuppressed | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $env:APPSEC_SCAN_OUT'
   else
     missing psscriptanalyzer "Install-Module PSScriptAnalyzer -Scope CurrentUser (PowerShell 7)"
   fi
@@ -246,9 +312,12 @@ fi
 if has_files -name 'package.json' -o -name 'requirements*.txt' -o -name 'pyproject.toml' -o -name 'go.mod' \
   -o -name 'Cargo.toml' -o -name 'pom.xml' -o -name 'Gemfile' -o -name 'composer.json' -o -name '*.lock' -o -name 'package-lock.json'; then
   if have osv-scanner; then
+    # An empty --config replaces the repository's osv-scanner.toml (ignored vulnerabilities and packages).
+    list_settings osv-scanner osv-scanner.toml --
+    : > "$imposed/osv-scanner.toml"
     # OSV-Scanner sends package names and versions to osv.dev (and resolves Maven dependencies
     # online). --offline stops that; without a local database it finds nothing, so say so.
-    osv_flags=(--format json --output "$out/osv.json")
+    osv_flags=(--config "$imposed/osv-scanner.toml" --format json --output "$out/osv.json")
     [ "$offline" -eq 1 ] && osv_flags+=(--offline)
     run osv-scanner osv.json osv-scanner scan source -r "$repo" "${osv_flags[@]}"
     if [ "$offline" -eq 1 ] && grep -q 'no offline version of the OSV database' "$out/osv.json.stderr" 2>/dev/null; then
@@ -299,25 +368,24 @@ if has_files -name '*.tf' -o -name 'Dockerfile' -o -name '*.yaml' -o -name '*.ym
     rm -rf "$work"
     mkdir -p "$work/cwd"
     src="$repo"
-    if find "$repo" -path '*/node_modules' -prune -o -path '*/.git' -prune -o \
-      \( -name '.checkov.yaml' -o -name '.checkov.yml' \) -print -quit | grep -q .; then
+    if has_named .checkov.yaml || has_named .checkov.yml; then
       src="$work/tree"
-      mkdir -p "$src"
-      find "$repo" -mindepth 1 -maxdepth 1 ! -name .git ! -name node_modules -exec cp -RP {} "$src/" \;
-      find "$src" \( -name '.checkov.yaml' -o -name '.checkov.yml' \) -exec rm -f {} +
+      copy_without "$src" .checkov.yaml .checkov.yml
     fi
     run checkov checkov.json sh -c 'cd "$1" && checkov -d "$2" --quiet --compact -o json > "$3"' _ "$work/cwd" "$src" "$out/checkov.json"
     if [ "$src" != "$repo" ] && [ -s "$out/checkov.json" ]; then
-      # Absolute paths in the report name the copy: point them back at the repository.
-      FROM="$src" TO="$repo" awk '{ o = ""; while ((i = index($0, ENVIRON["FROM"])) > 0) { o = o substr($0, 1, i - 1) ENVIRON["TO"]; $0 = substr($0, i + length(ENVIRON["FROM"])) } print o $0 }' \
-        "$out/checkov.json" > "$work/checkov.json" && mv "$work/checkov.json" "$out/checkov.json"
+      repoint "$out/checkov.json" "$src"
     fi
     rm -rf "$work"
   else
     missing checkov "pipx install checkov | brew install checkov"
   fi
   if have trivy; then
-    run "trivy config" trivy-config.json trivy config --quiet --format json --output "$out/trivy-config.json" "$repo"
+    # Trivy reads .trivyignore and trivy.yaml from the folder it runs in: none, from the empty folder,
+    # and both turned off by name. Inline #trivy:ignore comments cannot be turned off.
+    list_settings trivy .trivyignore .trivyignore.yaml trivy.yaml -- 'trivy:ignore:kept'
+    run "trivy config" trivy-config.json in_neutral trivy config --quiet --ignorefile '' --config '' \
+      --format json --output "$out/trivy-config.json" "$repo"
   fi
 else
   skipped checkov "no IaC or container files"
@@ -326,13 +394,17 @@ fi
 # --- CI workflows -------------------------------------------------------------------
 if [ -d "$repo/.github/workflows" ]; then
   if have zizmor; then
-    run zizmor zizmor.json sh -c 'zizmor --offline --format json "$1" > "$2"' _ "$repo" "$out/zizmor.json"
+    # --no-config: no zizmor.yml from the repository. --no-ignores: no "# zizmor: ignore" comments.
+    list_settings zizmor zizmor.yml zizmor.yaml -- 'zizmor: ignore:ignored'
+    run zizmor zizmor.json in_neutral sh -c 'zizmor --offline --no-config --no-ignores --format json "$1" > "$2"' _ "$repo" "$out/zizmor.json"
   else
     missing zizmor "brew install zizmor | pipx install zizmor"
   fi
 else
   skipped zizmor "no GitHub Actions workflows"
 fi
+
+rm -rf "$neutral" "$imposed"
 
 # --- Summary --------------------------------------------------------------------------
 echo "Scanner outputs: $out"
