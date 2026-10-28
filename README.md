@@ -107,7 +107,7 @@ Results per skill and per model are in [`CHANGELOG.md`](CHANGELOG.md).
 
 The skills are tested against a bench before every release, and the results are published, including the failures.
 
-- **Bench v1** ([`bench/`](bench/)): TinyShop, a small multi-stack application with 43 seeded flaws (38 before 2026-10-24, 42 before 2026-10-26) and a fixed counterpart with traps for false positives.
+- **Bench v1** ([`bench/`](bench/)): TinyShop, a small multi-stack application with 44 seeded flaws (38 before 2026-10-24, 42 before 2026-10-26, 43 before 2026-10-28) and a fixed counterpart with traps for false positives.
 - **Bench v2** ([`bench/v2/`](bench/v2/)): eight real vulnerabilities from ten GitHub Security Advisories published in 2026, each reviewed at the commit before its fix, and seven of them also at the fixed commit (the eighth was too large).
 - **Known vulnerabilities** ([`bench/deps/`](bench/deps/)): exploited-in-the-wild and reachable versus merely listed (CISA KEV, EPSS, reachability), including a library vendored outside any manifest.
 - **Live targets** ([`bench/live-target/`](bench/live-target/)): planning and recording authorized tests on a deployed app without its source, and writing Supabase RLS probes.

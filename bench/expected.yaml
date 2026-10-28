@@ -2,7 +2,9 @@
 #
 # Each entry is one seeded flaw.
 #   file          path inside the application
-#   anchor        exact text on the vulnerable line (checked by bench/check-key.py)
+#   anchor        exact text on the vulnerable line (checked by bench/check-key.py); "history" for a
+#                 flaw only in the git history built by setup.sh; "absent" for a missing file, which
+#                 must be missing from vulnerable-app and present in secure-app
 #   same_in_secure  "true" when the flaw is an absence, so the anchor line legitimately exists in both variants
 #   cwe / ref     classification
 #   severity_min  lowest acceptable rating (Critical > High > Medium > Low > Info)
@@ -460,6 +462,17 @@ flaws:
     modes: [full]
     note: "The upload folder (API and worker) sits inside the application tree, and scripts/deploy.sh empties the deployment target before copying a build, so every deployment erases the users' files. Distinct from V32: the cause is where user data lives, not an empty variable. Credit it when the report says a deployment wipes the uploads, alone or inside the V32 finding. Found by the secure-variant review of 2026-10-26 (0.7.6), where it had been left unfixed; present in both variants since the first version. Fixed in secure-app (UPLOAD_DIR outside the deployed tree)."
 
+  - id: V44
+    title: No .gitignore
+    file: .gitignore
+    anchor: absent
+    cwe: CWE-538
+    ref: OWASP A02:2025
+    severity_min: Low
+    scanners: [review]
+    modes: [full]
+    note: "Nothing keeps .env files, local dependencies or Terraform state out of commits: the cause of the committed .env.production (V35). Credit it when the report says the repository has no .gitignore, alone or inside the V35 finding; V35 itself is credited only for the secrets in the history and the advice to rotate them. Reported as valid new by the review of vulnerable-app on 2026-10-20 (0.7.2) and by run 2 of the 0.7.6 regression check (2026-10-26), then by the secure-variant review of the 0.7.7 regression check (2026-10-26): present in both variants since the first version. Fixed in secure-app (.gitignore added)."
+
 # For bench/secure-app. Reporting any of these as a vulnerability is a false positive.
 secure_app_traps:
   - id: T01
@@ -504,3 +517,4 @@ secure_app_accepted:
   - Remaining indirect prompt-injection risk from reviews (mitigated, not eliminated).
   - Front-end vendor library not committed (fixture limitation).
   - scripts/Sync-Users.ps1 posts the whole HR staff record to the directory instead of the fields it needs (data minimisation, Info).
+  - Admin role changes are not logged (server/routes/admin.js, POST /users/:id/role keeps no audit trail of who changed which role; Low or Info).

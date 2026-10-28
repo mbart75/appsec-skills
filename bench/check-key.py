@@ -3,7 +3,8 @@
 
 Run after any edit to the bench. Fails if an anchor is missing from
 vulnerable-app (the key would be wrong) or still present in secure-app
-(the fix would be incomplete). Standard library only.
+(the fix would be incomplete). An "absent" anchor is a missing file: it must be
+missing from vulnerable-app and present in secure-app. Standard library only.
 """
 import re
 import sys
@@ -37,6 +38,14 @@ def main() -> int:
     flaws = list(entries((HERE / "expected.yaml").read_text()))
     for flaw in flaws:
         if flaw["anchor"] == "history":
+            continue
+        if flaw["anchor"] == "absent":
+            if (HERE / "vulnerable-app" / flaw["file"]).exists():
+                print(f"{flaw['id']}: vulnerable-app/{flaw['file']} exists, the key says it is missing")
+                errors += 1
+            if not (HERE / "secure-app" / flaw["file"]).exists():
+                print(f"{flaw['id']}: secure-app/{flaw['file']} is missing (the fix would be incomplete)")
+                errors += 1
             continue
         vulnerable = HERE / "vulnerable-app" / flaw["file"]
         secure = HERE / "secure-app" / flaw["file"]

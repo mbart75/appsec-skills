@@ -48,7 +48,7 @@ Special rules, written in the key's `note` field:
 
 ## 4. Metrics
 
-- **Recall** = points / 43 on the vulnerable variant. The key had 38 flaws until 2026-10-24 and 42 until 2026-10-26: earlier scores are out of that total.
+- **Recall** = points / 44 on the vulnerable variant. The key had 38 flaws until 2026-10-24, 42 until 2026-10-26 and 43 until 2026-10-28: earlier scores are out of that total.
 - **Precision** = (findings that are seeded, valid new or accepted) / all findings, both variants combined.
 - **Trap hits** = number of `secure_app_traps` reported as vulnerabilities.
 - **Severity agreement** = share of found flaws rated at or above `severity_min`.

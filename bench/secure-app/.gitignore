@@ -1,0 +1,17 @@
+# Secrets and local settings
+.env
+.env.*
+
+# Dependencies and build leftovers
+node_modules/
+__pycache__/
+*.pyc
+
+# Terraform state and local files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Uploaded files, if UPLOAD_DIR points inside a working copy
+uploads/
