@@ -162,7 +162,7 @@ Detected and used when present. Default choices, by category:
 | LLM applications | promptfoo | garak |
 | Accessibility | axe-core | |
 
-A helper script, `appsec-review/scripts/run-scanners.sh`, detects installed tools, runs them with safe defaults into an output directory outside the repository, and prints a summary of what ran and what was missing. Bash. It never uploads source code. Network use, all of it from the tools it runs: Semgrep and Trivy download their rules; OSV-Scanner sends package names and versions to the OSV database; `cve-priority.py` sends CVE identifiers to the EPSS API and downloads the KEV catalog; TruffleHog tests found secrets against their issuer only with `--verify-secrets`. `--offline` stops the OSV, EPSS and KEV lookups.
+A helper script, `appsec-review/scripts/run-scanners.sh`, detects installed tools, runs them with safe defaults into an output directory outside the repository, and prints a summary of what ran and what was missing. Bash. It never uploads source code. Network use, all of it from the tools it runs: Semgrep and Trivy download their rules; OSV-Scanner sends package names and versions to the OSV database; `cve-priority.py` sends CVE identifiers to the EPSS API and downloads the KEV catalog; TruffleHog tests found secrets against their issuer only with `--verify-secrets`. `--offline` stops all of it: the OSV, EPSS and KEV lookups, Semgrep (skipped: its rules come from its registry) and Trivy's checks download (it uses the checks embedded in its binary). Trivy runs with `--disable-telemetry` and `--skip-version-check`, online or offline.
 
 ## 6. Test bench
 

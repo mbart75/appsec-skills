@@ -120,6 +120,8 @@ jobs:
           pwsh -NoProfile -Command 'Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force'
           shellcheck --version
           PATH="$bin:$bin/venv/bin:$PATH" APPSEC_TEST_REQUIRE_ALL=1 bash tests/run-scanners-repo-settings.sh
+          # --offline keeps Semgrep and Trivy offline; the real Trivy runs behind a recording proxy.
+          PATH="$bin:$PATH" APPSEC_TEST_REQUIRE_ALL=1 bash tests/run-scanners-offline-sast.sh
 
       - name: Supabase SQL on PostgreSQL
         run: PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)" bash bench/rls-sql/run.sh

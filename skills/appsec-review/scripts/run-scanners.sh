@@ -10,13 +10,16 @@
 #   --history          also scan the whole git history for secrets (full mode)
 #   --verify-secrets   let TruffleHog test found secrets against their provider
 #                      (network call carrying the secret to its own issuer; off by default)
-#   --offline          no dependency lookups: OSV-Scanner matches against its local database
-#                      (download it beforehand with --download-offline-databases), and the
-#                      CISA KEV catalog and EPSS scores are not fetched
+#   --offline          nothing fetched online: OSV-Scanner matches against its local database
+#                      (download it beforehand with --download-offline-databases), the CISA
+#                      KEV catalog and EPSS scores are not fetched, Semgrep (whose rules come
+#                      from its registry) is skipped, and Trivy uses the checks embedded in
+#                      its binary instead of downloading the latest bundle
 #
-# Never installs anything. Never sends source code anywhere. Some tools download
-# rules or query public vulnerability databases with package names and versions;
+# Never installs anything. Never sends source code anywhere. Online, Semgrep and Trivy download
+# their rules, OSV-Scanner queries the OSV database with package names and versions, and
 # cve-priority.py sends CVE identifiers to the FIRST EPSS API and downloads the KEV catalog.
+# Trivy never sends usage telemetry nor checks for version updates.
 # Exit code is 0 even when scanners report findings: triage is the agent's job.
 set -uo pipefail
 
@@ -227,7 +230,10 @@ if [ "$history" -eq 1 ] && [ "$is_git" -eq 1 ]; then
 fi
 
 # --- Static analysis ------------------------------------------------------------
-if have semgrep || have opengrep; then
+if [ "$offline" -eq 1 ] && { have semgrep || have opengrep; }; then
+  # p/default comes from the Semgrep registry: offline there are no rules to run.
+  record semgrep "SKIPPED (offline)" "its rules come from the Semgrep registry: run without --offline for static analysis"
+elif have semgrep || have opengrep; then
   sg=semgrep; have semgrep || sg=opengrep
   # nosemgrep comments: --disable-nosem. .semgrepignore files: the option that skips them is
   # internal, so the scan runs on a copy without them (and without .git, so no .gitignore applies).
@@ -384,9 +390,16 @@ if has_files -name '*.tf' -o -name 'Dockerfile' -o -name '*.yaml' -o -name '*.ym
   if have trivy; then
     # Trivy reads .trivyignore and trivy.yaml from the folder it runs in: none, from the empty folder,
     # and both turned off by name. Inline #trivy:ignore comments cannot be turned off.
+    # It also sends usage telemetry and asks check.trivy.dev for updates: never. Offline, it does
+    # not download the latest checks bundle and uses the one embedded in its binary.
     list_settings trivy .trivyignore .trivyignore.yaml trivy.yaml -- 'trivy:ignore:kept'
-    run "trivy config" trivy-config.json in_neutral trivy config --quiet --ignorefile '' --config '' \
+    trivy_flags=(--disable-telemetry --skip-version-check)
+    [ "$offline" -eq 1 ] && trivy_flags+=(--skip-check-update)
+    run "trivy config" trivy-config.json in_neutral trivy config --quiet "${trivy_flags[@]}" --ignorefile '' --config '' \
       --format json --output "$out/trivy-config.json" "$repo"
+    if [ "$offline" -eq 1 ]; then
+      record "trivy config" "offline" "embedded checks, as of this Trivy release: newer checks need a run without --offline"
+    fi
   else
     missing trivy "brew install trivy | https://github.com/aquasecurity/trivy"
   fi
