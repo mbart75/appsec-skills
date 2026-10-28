@@ -2,7 +2,7 @@
 name: appsec-review
 description: Use when asked to review code for security, audit a repository, a pull request or a deployed site for vulnerabilities, check whether an app is safe to launch or to make public, find security issues before deploying, or verify that findings from a previous security report are fixed. Covers web apps, APIs, mobile apps, LLM features, CI workflows, Terraform, PowerShell, bash and Python.
 metadata:
-  version: "0.7.8"
+  version: "0.7.9"
 ---
 
 # appsec-review

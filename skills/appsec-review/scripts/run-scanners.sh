@@ -19,7 +19,7 @@
 # Never installs anything. Never sends source code anywhere. Online, Semgrep and Trivy download
 # their rules, OSV-Scanner queries the OSV database with package names and versions, and
 # cve-priority.py sends CVE identifiers to the FIRST EPSS API and downloads the KEV catalog.
-# Trivy never sends usage telemetry nor checks for version updates.
+# Trivy always gets --disable-telemetry and --skip-version-check.
 # Exit code is 0 even when scanners report findings: triage is the agent's job.
 set -uo pipefail
 
