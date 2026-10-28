@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Bench v2 measured on 0.7.9**: mean recall 5.6/8 over two or three Haiku runs per case (earlier measurement of a draft of the skill, 2026-10-16: 7.5/8 in one run; model alone: 8/8), no expected flaw reported on the eight fixed commits, and a first baseline without the skill on those commits. Details and limits under "Bench v2" below. Under the regression rule of `bench/score.md` section 6, this is a regression (mean 1.9 points lower, R02 missed in every run). No skill change.
+
 ## 0.7.9 (2026-10-28)
 
 - **`run-scanners.sh --offline` fetches nothing online.** It promised no lookups, but Semgrep still downloaded its rules from the Semgrep registry (`--config p/default`) and Trivy its checks bundle from `mirror.gcr.io`. Offline, Semgrep is now skipped and the summary says `semgrep SKIPPED (offline)`; Trivy runs with `--skip-check-update` and uses the checks embedded in its binary, which the summary says (`trivy config offline embedded checks`). Trivy also sent anonymous usage telemetry to Aqua and asked `check.trivy.dev` for updates on every run, online or offline: it now always runs with `--disable-telemetry` and `--skip-version-check` (option names checked in the Trivy 0.76.0 documentation). New test `tests/run-scanners-offline-sast.sh`, in CI with the pinned Trivy 0.76.0: stand-in scanners record their arguments, and the real Trivy runs behind a local proxy that logs every connection attempt. On 0.7.8, 9 of 13 checks fail, and the proxy logs `CONNECT check.trivy.dev:443` and `CONNECT mirror.gcr.io:443`; 13/13 now, with no connection. With its embedded checks, Trivy still reports a Dockerfile running as root (DS-0002). README and `docs/design.md` updated.
@@ -245,3 +249,49 @@ What this shows, plainly:
 - **What the skill adds** is therefore not more detection on these cases but the report itself (work order, verified findings, "Done when", statuses, verify mode), consistent redaction and scope discipline. A baseline without the skill on the fixed commits was not run, so finding residual issues there cannot be credited to the skill.
 
 The v1 bench is easy for current models: both baselines found nearly every textbook flaw. It measures report quality and discipline more than detection. A harder bench (subtle flaws diluted in mostly correct code) is planned.
+
+#### appsec-review 0.7.9 (2026-10-28)
+
+Tag `v0.7.9` (`d1f497d`), same cases, floors and verdicts as above. Each vulnerable commit was reviewed twice, and a third time on the cases where the first two disagreed (R01, R03, R05, R08). `bench/score.md` section 6 asks for a third run when two run totals differ by more than 1 point (here 2.3); running it only on the disagreeing cases is an adaptation. Each fixed commit was reviewed once with the skill and once without it, which adds the baseline missing above. 36 Claude Haiku 5.5 runs, each from a fresh blind copy (`bench/v2/setup.sh`) and a fresh session, each adjudicated by a separate Claude Sonnet 5.5 agent.
+
+| Case | Run 1 | Run 2 | Run 3 | Mean | 2026-10-16 draft (one run) | Fixed, skill | Fixed, no skill |
+|---|---|---|---|---|---|---|---|
+| R01 authorization, Go | found | partial (rated Low) | found | 0.83 | partial | 0 | 0 |
+| R02 missing auth, 56k lines | missed | missed | not needed | 0 | found | 0 | 1, disputed |
+| R03 fail-open webhook auth | found | partial (Medium, narrower cause) | partial (narrower cause) | 0.67 | found | 0 | 0 |
+| R04 code injection | found | found | not needed | 1 | found | 0 | 0 |
+| R05 allow-list bypasses x3 | 2/3 | 1/3 | 2.5/3 | 0.61 | 3/3 | 0 | 0 |
+| R06 argument injection | found | found | not needed | 1 | found | 0 | 0 |
+| R07 CI script injection | found | found | not needed | 1 | found | 0 | 0 |
+| R08 SSRF via DNS rebinding | found | missed | partial (rated Low) | 0.5 | found | 0 | 0 |
+| **Total** | 6.67/8 | 4.33/8 | | **5.6/8** | 7.5/8 | **0 on 8** | 1 on 8 |
+
+R05 by flaw: `bash -c` found, found, found in run 3 but partial in run 2 (Medium, scripts already on disk only); `git -c alias.x=!` found in runs 1 and 3, missed in run 2; security off by default missed in run 1, then only an open question (run 2) or an Info finding (run 3), never at its Medium floor.
+
+What this shows, plainly:
+
+- **Detection is lower than in the earlier measurement and lower than the model alone**: 5.6/8 against 7.5/8 (a draft of the skill, 2026-10-16, one run) and 8/8 (model alone, one run). Under the rule of `bench/score.md` section 6 this is a **regression**: the mean is 1.9 points lower, past the 1-point bar, and R02 is missed in every run although the earlier measurement found it. Run-to-run variance is high (the two complete runs differ by 2.3 points), and the earlier figures are single runs, but even the better run (6.67) is below 7.5. No gain is shown.
+- **Where points are lost**:
+  - Coverage: on R02 (56,000 lines), the review chose its files and never reached `lib/approval-inbox.ts` (run 1) or listed it as not read in depth (run 2).
+  - Severity under the floor: R01 run 2, R03 run 2, R08 run 3, and R05's insecure default in every run.
+  - A narrower root cause than the advisory: R03 runs 2 and 3 name a narrower trigger than the advisory's custom paths. R08 run 2 never mentions rebinding, and its proposed fix (resolve, then check) would keep the flaw.
+- **Fixed commits**: with the skill, no expected flaw was reported on any of the eight, R02 included for the first time. Without the skill: one, on R02, counted under the bench rule and still being checked. A first adjudication counted a second baseline false positive on R03. A re-adjudication under one explicit rule reversed it: a finding counts only if it says the advisory's own attack path still works.
+- **Residual weaknesses around the fix** (R03, R04, R05, R06, R07's unfixed sibling workflow, R08) were reported **with and without the skill**. Finding them comes from the model, not the skill, which answers the question left open above. They are not described here: the code is third-party and the reports have not been checked with its maintainers.
+- **Report**: 27 of 28 skill reports name `appsec-review 0.7.9`. One (R05 run 3) wrote "version not declared in SKILL.md", although the version is in the front matter.
+
+Limits:
+
+- **R04 does not measure detection.** OSV-Scanner matched the project's own published package to the advisory, and the reports cite its identifiers. The answer key reached the reviewer through a scanner. This probably held in the earlier measurement too, since scanners were installed then as well.
+- **The harness differs from the earlier measurement**, so part of the gap may come from it:
+  - Runs used headless `claude -p` (Claude Code 2.1.306), with the web tools removed (`--disallowedTools WebSearch WebFetch`) rather than only forbidden.
+  - The user's settings and instructions were not loaded (`--setting-sources project,local`).
+  - The skill was loaded as a plugin from an export of the tag.
+  - The baseline ran with `--disable-slash-commands` and the prompt "Review this repository for security vulnerabilities. For each finding, give the location, the root cause and a severity."
+  - The earlier setup was not recorded in that detail.
+- **One run per fixed commit**, as before.
+- **Incident**:
+  - The first 15 runs inherited the parent session's environment, and two of them wrote their report into the parent's scratch folder, each under its own name. Their transcripts show no run reading another run's files. The other 21 runs had a clean environment.
+  - A restart later wiped the scratch folders. Every report was rebuilt from its session transcript (last write, then later edits replayed), and the arbitrations already done were kept.
+
+Cost per review with the skill (28 runs): 3.5 million tokens processed on average, cache reads included (0.9 to 11.1 million, the highest on R02), 39,000 to 107,000 of them output, 4 to 11 minutes. Baseline without the skill: 1.1 million tokens, 1.4 to 7.2 minutes. Adjudication: 65,000 to 85,000 tokens as the agent harness reports them (not the same count), under a minute. The review counts include cache reads; the bench v1 figures above may be counted differently, so do not compare them.
+
