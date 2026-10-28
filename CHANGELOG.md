@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.9 (2026-10-28)
 
 - **`run-scanners.sh --offline` fetches nothing online.** It promised no lookups, but Semgrep still downloaded its rules from the Semgrep registry (`--config p/default`) and Trivy its checks bundle from `mirror.gcr.io`. Offline, Semgrep is now skipped and the summary says `semgrep SKIPPED (offline)`; Trivy runs with `--skip-check-update` and uses the checks embedded in its binary, which the summary says (`trivy config offline embedded checks`). Trivy also sent anonymous usage telemetry to Aqua and asked `check.trivy.dev` for updates on every run, online or offline: it now always runs with `--disable-telemetry` and `--skip-version-check` (option names checked in the Trivy 0.76.0 documentation). New test `tests/run-scanners-offline-sast.sh`, in CI with the pinned Trivy 0.76.0: stand-in scanners record their arguments, and the real Trivy runs behind a local proxy that logs every connection attempt. On 0.7.8, 9 of 13 checks fail, and the proxy logs `CONNECT check.trivy.dev:443` and `CONNECT mirror.gcr.io:443`; 13/13 now, with no connection. With its embedded checks, Trivy still reports a Dockerfile running as root (DS-0002). README and `docs/design.md` updated.
 - **Bench v1 key: 43 → 44 flaws, and one more accepted finding on `secure-app`.**
@@ -9,6 +9,18 @@
   - Earlier scores are out of 43 (42 before 2026-10-26, 38 before 2026-10-24) and are not rescored. The bench was not run again for this change; the 0.7.9 regression check scores out of 44.
 - **`run-scanners.sh`: Trivy is listed when it is missing.** On a repository with IaC or container files, an absent Trivy left no line in the summary, while every other absent scanner is listed `MISSING` with its install command. It now shows `trivy MISSING install: brew install trivy | https://github.com/aquasecurity/trivy`. `tests/run-scanners-checkov.sh`, which runs with only Checkov on the PATH, checks it: 2 of 16 checks fail on 0.7.8, 16/16 now. The bench was not run again: this only adds a summary line.
 - Installer header comments say what the installers do: inside a skills folder, only `appsec-*` folders are created, replaced or removed, and installing also creates the chosen skills folder (and its parents) when it is missing, as the README says since 0.7.6; uninstalling never creates it. Checked with `install.sh` and `install.ps1` on throwaway folders. Comments only.
+- **Regression check on bench v1, `main` at `1cc15f5` (before 0.7.9)**, method of `bench/score.md` section 6: Claude Haiku 5.5, a fresh blind copy and a fresh session per run, same scanners as 0.7.8 (Semgrep 1.182.0 and Trivy 0.76.1 on this machine), each run adjudicated by a separate agent (Claude Sonnet) against `expected.yaml`:
+
+  | Run | /44 | /43 (V01–V43) | /42 (V01–V42) | /38 (V01–V38) | Missed | Partial | False positives |
+  |---|---|---|---|---|---|---|---|
+  | 1 | 41.5 | 40.5 | 40.5 | 38 | V41, V43 | V40 (stack trace reported, not the process crash) | 0 |
+  | 2 | 41 | 40 | 40 | 38 | V40, V43 | V39 (length rule only in a fix line), V41 (e-mail validation inside the XSS finding) | 0 |
+  | **Mean** | **41.25** | **40.25** | **40.25** | **38** | | | |
+
+  0.7.8 mean: 39.25 on 43. No third run was needed: the two runs differ by 0.5 point, and the mean is 1.0 above 0.7.8 on 43. Section 6, rule by rule: no flaw was missed in every run that 0.7.8 found in every run (V43, missed in both runs, was missed in both 0.7.8 runs too; V40 and V41 are each partial in one run, V39 is found or partial where 0.7.8 missed it twice); no false positive, no trap hit, no secret in any report or scanner output. **The release meets the bar.** V44 (no `.gitignore`), new in this release, was found in both runs, inside the V35 finding. Run 1's V38 credit is narrow: credential persistence is named in the scanner appendix and in the fix, not described in a finding. Every finding outside the key is listed in `secure_app_accepted` (upload quota and CSRF in run 1; the staff-record sync, upload quota, link-preview body size, S3 logging and database TLS in run 2).
+- **The rule on secrets, run by run.** Each agent's transcript was searched for the seeded values. Neither the database password nor the LLM key from the history reached either agent: both read variable names and the prefix-and-length shape, as in 0.7.8. The JWT and the PowerShell password reached both agents when they read `public/config.js` and `scripts/Sync-Users.ps1` in full, as the rule allows for source code; both reports say so in their Scope. The reports and scanner outputs hold no secret: the longest match is 5 characters of the PowerShell password, an ordinary word that also appears elsewhere in the application.
+- What the bench covers in this release: the skills' text did not change since 0.7.8; `run-scanners.sh` gains two Trivy options on the online path the bench uses. The `--offline` path is covered by `tests/run-scanners-offline-sast.sh`, not by the bench.
+- Cost per run: about 203,000 to 204,000 tokens and 7.5 minutes for the review, 107,000 tokens and 1 to 1.5 minutes for the adjudication.
 
 ## 0.7.8 (2026-10-26)
 
