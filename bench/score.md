@@ -40,6 +40,8 @@ The reviewed code is untrusted, and a review runs it: on 2026-10-28, bench v2 re
 
 `sandbox-check.sh` reviews a trapped copy (an MCP server and hooks that touch canary files, a probe that tries to escape) and judges from outside. With the old invocation, the MCP canary appears.
 
+The harness is a safety net, not the sandbox that `appsec-review` asks the user to provide before running a proof of concept. The bench prompt names no sandbox, so under the skill's rule the reviewer must not run the reviewed code at all; a run that does is a skill failure, visible in its transcript. The harness also falls short of that sandbox's conditions: it is Claude Code's sandbox on the host, not a container or virtual machine, and the shell can still read the host's files outside the private paths above (`/opt/homebrew`, `/etc`, most of the home folder).
+
 Effects on the measurement, compared with runs before 2026-10-29: scanners run as before; a proof of concept can still run inside the copy, but cannot install packages (no PyPI, npm, Go proxy, Homebrew) nor start a local server. The tools cannot change during a measurement; `env.txt` lists them, and runs are comparable only with the same `env.txt`. On 2026-10-28, a review installed Go halfway through the measurement; it was removed on 2026-10-29, so from then on the reference environment has no Go (`go -` in `env.txt`), and Go code is reviewed without `go test` or `go build`.
 
 ## 3. Adjudicate
