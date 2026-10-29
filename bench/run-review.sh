@@ -66,7 +66,8 @@ inventory() {
   for t in git python3 node npm go cargo php ruby java semgrep opengrep trivy gitleaks trufflehog \
            osv-scanner bandit checkov zizmor shellcheck pwsh govulncheck; do
     if PATH="$path" command -v "$t" >/dev/null 2>&1; then
-      printf '%s\t%s\n' "$t" "$(PATH="$path" "$t" --version 2>&1 | head -n 1)"
+      # First line that carries a version number (ShellCheck prints a title first, Semgrep a blank line).
+      printf '%s\t%s\n' "$t" "$(PATH="$path" "$t" --version 2>&1 | grep -m 1 -E '[0-9]+\.[0-9]+' || echo 'no version')"
     else
       printf '%s\t-\n' "$t"
     fi

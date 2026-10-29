@@ -40,7 +40,7 @@ The reviewed code is untrusted, and a review runs it: on 2026-10-28, bench v2 re
 
 `sandbox-check.sh` reviews a trapped copy (an MCP server and hooks that touch canary files, a probe that tries to escape) and judges from outside. With the old invocation, the MCP canary appears.
 
-Effects on the measurement, compared with runs before 2026-10-29: scanners run as before; a proof of concept can still run inside the copy, but cannot install packages (no PyPI, npm, Go proxy, Homebrew) nor start a local server. The tools cannot change during a measurement; `env.txt` lists them, and runs are comparable only with the same `env.txt` (on 2026-10-28, Go appeared halfway through the measurement).
+Effects on the measurement, compared with runs before 2026-10-29: scanners run as before; a proof of concept can still run inside the copy, but cannot install packages (no PyPI, npm, Go proxy, Homebrew) nor start a local server. The tools cannot change during a measurement; `env.txt` lists them, and runs are comparable only with the same `env.txt`. On 2026-10-28, a review installed Go halfway through the measurement; it was removed on 2026-10-29, so from then on the reference environment has no Go (`go -` in `env.txt`), and Go code is reviewed without `go test` or `go build`.
 
 ## 3. Adjudicate
 
