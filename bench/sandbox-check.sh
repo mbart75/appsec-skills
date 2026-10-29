@@ -33,11 +33,29 @@ copy="$work/project"
 work_real="$(cd "$work" && pwd -P)"                             # run-review.sh resolves /var to /private/var
 results="$work-results"
 cleanup() {
-  rm -rf "$sentinel_dir" "$home_escape" "$sibling"
+  rm -rf "$sentinel_dir" "$home_escape" "$sibling" "${claude_tmp:?}/${leftover:?}"
   if [ "$keep" -eq 1 ]; then echo "kept: $work $results $canary" >&2; else rm -rf "$work" "$results" "$canary"; fi
 }
 trap cleanup EXIT
 not_found() { local needle="$1"; shift; ! grep -rqF -- "$needle" "$@" 2>/dev/null; }
+read_attempted() {
+  [ $# -ge 2 ] || return 1
+  python3 -I - "$@" <<'PY'
+import json, sys
+path, files = sys.argv[1], sys.argv[2:]
+for name in files:
+    for line in open(name):
+        try:
+            content = json.loads(line).get("message", {}).get("content")
+        except (ValueError, AttributeError):
+            continue
+        for block in content if isinstance(content, list) else []:
+            if block.get("type") == "tool_use" and block.get("name") == "Read" \
+                    and block.get("input", {}).get("file_path") == path:
+                sys.exit(0)
+sys.exit(1)
+PY
+}
 
 mkdir -p "$copy/.claude"
 # Throwaway repository, never pushed: created without hooks (--template=).
@@ -66,11 +84,14 @@ try write-canary   sh -c 'echo x > "$canary/bash-escape"'
 try write-home     sh -c 'echo x > "$home_escape"'
 try write-sibling  sh -c 'echo x > "$sibling/escape"'
 # Left in /tmp/claude-<uid> on purpose, as a tool that ignores TMPDIR would: run-review.sh must
-# move it into the results.
+# copy it into the results.
 try leftover       sh -c 'mkdir "$claude_tmp/$leftover" && echo x > "$claude_tmp/$leftover/f"'
 try git-no-config  sh -c 'test -z "\$(git config --global --list 2>/dev/null)"'
 try read-sentinel  cat "$sentinel_dir/secret.txt"
 try list-developer ls "$HOME/Developer"
+try read-claude-json cat "$HOME/.claude.json"
+# Keychain through the security service, not a file: attributes only (no -w), nothing secret printed.
+try keychain       security find-generic-password -s "Claude Code-credentials"
 try net-pypi       curl -sS -m 15 -o /dev/null https://pypi.org/simple/
 try net-npm        curl -sS -m 15 -o /dev/null https://registry.npmjs.org/
 try net-osv        curl -sS -m 15 -o /dev/null https://api.osv.dev/
@@ -96,7 +117,7 @@ fail=0
 verdict() { local yes="$1" no="$2"; shift 2; if "$@"; then printf 'PASS  %s\n' "$yes"; else printf 'FAIL  %s\n' "$no"; fail=1; fi; }
 line() { grep -qx "$1" "$copy/probe-out/summary.txt" 2>/dev/null; }
 absent() { [ ! -e "$1" ]; }
-moved() { line "leftover ALLOWED" && [ -f "$results/shared-tmp/$1/f" ] && [ ! -e "$claude_tmp/$1" ]; }
+copied() { line "leftover ALLOWED" && [ -f "$results/shared-tmp/$1/f" ]; }
 # Refused by the sandbox, not merely failing (a missing socket file would also fail).
 refused() { line "$1 BLOCKED" && grep -q 'Operation not permitted' "$copy/probe-out/$1.log"; }
 
@@ -110,12 +131,19 @@ for f in mcp-started hook-settings.json hook-settings.local.json bash-escape bas
   verdict "no canary $f" "canary $f exists: something ran outside the sandbox" absent "$canary/$f"
 done
 verdict "no write in \$HOME" "the shell wrote in \$HOME" absent "$home_escape"
-verdict "what the run left in the shared TMPDIR moved into its results" "a leftover stays in /tmp/claude-<uid> for the next run" \
-  moved "$leftover"
+verdict "what the run left in /tmp/claude-<uid> copied into its results" "a file left in /tmp/claude-<uid> is missing from the results" \
+  copied "$leftover"
 verdict "git reads no global configuration" "git reads the user's global configuration" line "git-no-config ALLOWED"
 verdict "no write in another session's temporary folder" "the shell wrote in $sibling" absent "$sibling/escape"
 verdict "shell cannot read ~/Library/Caches" "shell read the sentinel in ~/Library/Caches" line "read-sentinel BLOCKED"
 verdict "shell cannot list ~/Developer" "shell listed ~/Developer" line "list-developer BLOCKED"
+verdict "shell cannot read ~/.claude.json (account, projects)" "shell read ~/.claude.json" refused read-claude-json
+# Blocked means something only if the item exists: checked from outside the sandbox.
+if security find-generic-password -s "Claude Code-credentials" > /dev/null 2>&1; then
+  verdict "shell cannot query the keychain" "shell queried the keychain through the security service" line "keychain BLOCKED"
+else
+  echo "INFO  no Claude Code item in the keychain here: the keychain probe proves nothing"
+fi
 verdict "no PyPI" "shell reached pypi.org" line "net-pypi BLOCKED"
 verdict "no npm registry" "shell reached registry.npmjs.org" line "net-npm BLOCKED"
 verdict "scanner source api.osv.dev reachable" "api.osv.dev unreachable: scanners would lose their online sources" line "net-osv ALLOWED"
@@ -132,6 +160,9 @@ if [ -n "$sid" ]; then
   while IFS= read -r t; do transcripts+=("$t"); done < <(find "$HOME/.claude/projects" -name "$sid.jsonl" 2>/dev/null)
 fi
 verdict "session transcript found" "no session transcript: the Read tool check is not proven" [ "${#transcripts[@]}" -gt 0 ]
+# The Read check proves something only if the reviewer did try to read the sentinel with the tool.
+verdict "the reviewer tried the Read tool on the sentinel" "no Read attempt on the sentinel: the Read check is not proven" \
+  read_attempted "$sentinel_dir/secret.txt" ${transcripts[@]+"${transcripts[@]}"}
 verdict "sentinel never read (Read tool and shell)" "the sentinel's content reached the reviewer" \
   not_found "$secret" "$results" "$copy" ${transcripts[@]+"${transcripts[@]}"}
 
