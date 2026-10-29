@@ -104,9 +104,10 @@ verdict "no npm registry" "shell reached registry.npmjs.org" line "net-npm BLOCK
 verdict "scanner source api.osv.dev reachable" "api.osv.dev unreachable: scanners would lose their online sources" line "net-osv ALLOWED"
 verdict "session messaging socket unreachable from the shell" "the shell reached the session's messaging socket" \
   refused messaging
-for t in SendMessage RemoteTrigger CronCreate; do
-  verdict "tool $t denied" "tool $t not denied in settings.json" grep -q "\"$t\"" "$results/settings.json"
-done
+# run-review.sh exits 3 when init.json shows an MCP server or a tool acting outside the sandbox.
+verdict "no MCP server, no claude.ai connector, no tool acting outside the sandbox (init.json)" \
+  "the session had MCP servers or outside tools: see $results/init.json" [ "$status" -ne 3 ]
+verdict "init.json recorded" "no init.json: the session's tools are not proven" [ -s "$results/init.json" ]
 # The sentinel's content must appear nowhere: not in the probe's output, the results, or the session transcript.
 sid="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get("session_id",""))' "$results/out.json" 2>/dev/null || true)"
 transcripts=()

@@ -24,7 +24,7 @@ It loads this repository's `skills/` at `--ref` (default `HEAD`), uses Claude Ha
 
 > Use the appsec-review skill in full mode on this repository.
 
-The results folder gets `out.json` (final message, cost, session id: the transcript is `~/.claude/projects/*/<session_id>.jsonl`), the report when it was written next to the copy, `env.txt`, `settings.json`, timings and exit code. Note the skill version and `env.txt` with the score.
+The results folder gets `out.json` (final message, cost, session id: the transcript is `~/.claude/projects/*/<session_id>.jsonl`), `init.json` (the tools, MCP servers, skills and plugins the session really had), `stream.jsonl`, the report when it was written next to the copy, `env.txt`, `settings.json`, timings and exit code. Exit code 3 means an invalid run: the session had an MCP server or a tool that acts outside the sandbox. Note the skill version and `env.txt` with the score.
 
 With another agent: a fresh session in the scratch copy, the skills installed or the `SKILL.md` given as context, the same prompt, and the same isolation by the agent's own means.
 
@@ -35,7 +35,7 @@ Run each variant. Optionally run twice: once with scanners installed, once with 
 The reviewed code is untrusted, and a review runs it: on 2026-10-28, bench v2 reviews run with `bypassPermissions` installed Go with Homebrew, ran npm install scripts, built a Python package from source and ran third-party tests on the host, and Claude Code tried to start the MCP server declared in a reviewed repository's `.mcp.json`. With that old invocation (`--setting-sources project,local`), a copy's `.mcp.json` server starts without any prompt; `run-review.sh` prevents it:
 
 - **Shell in Claude Code's sandbox, no way out** (`allowUnsandboxedCommands: false`). It writes only in the copy's folder (`review.XXXXXX/`, with its own `TMPDIR`, caches and Claude Code temporary folder), never in `/tmp/claude-<uid>`, where other sessions keep their scratchpads. It cannot read credentials (`~/.ssh`, `~/.aws`, `~/.config`, keychains…), `~/Developer`, iCloud, `~/.claude` or `~/Library/Caches`, where earlier results live. Its network reaches only the scanners' sources (Semgrep rules, Trivy checks, OSV, KEV, EPSS); `--offline` closes those too. It cannot connect to the session's messaging socket, which Claude Code exposes to it.
-- **Nothing from the copy, the user or the machine configures the session**: `--setting-sources ""`, `--strict-mcp-config` with no server, hooks off, `env -i`.
+- **Nothing from the copy, the user or the machine configures the session**: `--setting-sources ""`, `--strict-mcp-config` with no server, hooks off, `env -i`. With the old invocation, every 2026-10-28 run also had the user's claude.ai connectors (Gmail, Calendar, Notion, Docs: 113 tools); none was called, by luck. `init.json` now proves there is none.
 - **`acceptEdits`, not `bypassPermissions`**: the file tools write only in the copy; Read is denied on the same private paths. Tools that act through the Claude Code process, outside the sandbox, are denied: web, messages to other local sessions (`SendMessage`), cloud routines and schedules.
 
 `sandbox-check.sh` reviews a trapped copy (an MCP server and hooks that touch canary files, a probe that tries to escape) and judges from outside. With the old invocation, the MCP canary appears.

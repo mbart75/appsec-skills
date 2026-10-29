@@ -13,6 +13,9 @@
 #   --expect-env <file> stop unless this machine's tool inventory matches that env.txt from an earlier run
 #   --prompt <text>     replaces the bench prompt: for bench/sandbox-check.sh only, never for a scored run
 #
+# Exit code: claude's, or 3 when the session had an MCP server or a tool that acts outside the
+# sandbox (init.json): such a run is invalid, whatever its report.
+#
 # The reviewed code is untrusted: on 2026-10-28, reviews installed Go with Homebrew, ran npm
 # install scripts and third-party tests on the host, and Claude Code tried to start the MCP
 # server declared in the reviewed repository's .mcp.json. Here:
@@ -26,7 +29,7 @@
 # bench/sandbox-check.sh checks all of this on a trapped copy.
 set -euo pipefail
 
-usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 ref=HEAD skill=1 model=claude-haiku-5-5 offline=0 expect="" prompt=""
 while [ $# -gt 0 ]; do
@@ -154,10 +157,45 @@ status=0
     --strict-mcp-config --permission-mode acceptEdits \
     --disallowedTools WebSearch WebFetch SendMessage ListAgents RemoteTrigger CronCreate CronDelete \
       ScheduleWakeup PushNotification \
-    --output-format json ${plugin[@]+"${plugin[@]}"} \
-    > "$results/out.json" 2> "$results/stderr") || status=$?
+    --output-format stream-json --verbose ${plugin[@]+"${plugin[@]}"} \
+    > "$results/stream.jsonl" 2> "$results/stderr") || status=$?
 date +%s > "$results/end"
 echo "$status" > "$results/exit"
+# init.json: what the session really had (tools, MCP servers, skills, plugins). out.json: the
+# final result (message, cost, session id). A run that had an MCP server or a tool acting
+# outside the sandbox is not a valid bench run: on 2026-10-28 every run had the user's claude.ai
+# connectors (Gmail, Calendar, Notion…), 113 tools, because of --setting-sources project,local.
+if ! python3 -I - "$results" <<'PY'
+import json, os, sys
+d = sys.argv[1]
+init = result = None
+with open(os.path.join(d, "stream.jsonl")) as f:
+    for line in f:
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if e.get("type") == "system" and e.get("subtype") == "init" and init is None:
+            init = e
+        elif e.get("type") == "result":
+            result = e
+for name, e in (("init.json", init), ("out.json", result)):
+    if e is not None:
+        with open(os.path.join(d, name), "w") as f:
+            json.dump(e, f, indent=1)
+if init is None:
+    sys.exit("no init event: the session did not start")
+outside = {"SendMessage", "ListAgents", "RemoteTrigger", "CronCreate", "CronDelete",
+           "ScheduleWakeup", "PushNotification", "WebFetch", "WebSearch"}
+bad = [t for t in init.get("tools", []) if t.startswith("mcp__") or t in outside]
+bad += ["MCP server " + str(m.get("name")) for m in init.get("mcp_servers", [])]
+if bad:
+    sys.exit("INVALID RUN, the session had: " + ", ".join(bad))
+PY
+then
+  echo invalid > "$results/exit"
+  exit 3
+fi
 # Reports written outside the copy, next to it (the skill keeps reports out of the repository).
 find "$work" \( -path "$copy" -o -path "$work/cache" -o -path "$work/plugin" -o -path "$work/claude" \) -prune -o -type f -name '*report*.md' -print \
   | while IFS= read -r f; do cp "$f" "$results/"; done
