@@ -31,6 +31,8 @@ bench/v2/setup.sh R03 fixed
 
 The copy is fetched at the exact commit and re-created without history, in a directory with a neutral name. The reviewer must not use the web: the advisory is public.
 
+Review it with `bench/run-review.sh` (`bench/score.md`, section 2): these are real projects whose code the reviewer runs, and one of them declares an MCP server in its `.mcp.json`. The harness keeps them in Claude Code's sandbox, with no web and no package registry.
+
 Use the same prompt as bench v1 (`bench/score.md`), and the same adjudication: **found** (location and root cause right, severity at or above the floor), **partial** (right place, incomplete cause or severity below the floor), **missed**. On the fixed variant, reporting an expected flaw as still present is a false positive. Other findings on real projects cannot be fully adjudicated without the maintainers; they are read for obvious false positives only.
 
 ## Licences

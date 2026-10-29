@@ -11,15 +11,36 @@ The copy contains the application only. The reviewing agent must not see this re
 
 ## 2. Run the review
 
-- Start a **fresh** agent session with its working directory set to the scratch copy.
-- Make the skills available (installed in the agent, or the `SKILL.md` given as context).
-- Use exactly this prompt, so runs stay comparable:
+With Claude Code, always through the harness, never with a plain `claude -p`:
 
-  > Use the appsec-review skill in full mode on this repository.
+```bash
+bench/sandbox-check.sh                                  # once per measurement: every line must say PASS
+bench/run-review.sh "$copy" ~/Library/Caches/<measurement>/run1   # one fresh session per run
+bench/run-review.sh --no-skill "$copy" .../base1        # baseline without the skills
+bench/run-review.sh --expect-env .../run1/env.txt "$copy" .../run2   # same tools as run 1, or stop
+```
 
-- Save the report. Note the agent, the model, the skill version and which scanners were installed.
+It loads this repository's `skills/` at `--ref` (default `HEAD`), uses Claude Haiku 5.5 and exactly this prompt, so runs stay comparable:
+
+> Use the appsec-review skill in full mode on this repository.
+
+The results folder gets `out.json` (final message, cost, session id: the transcript is `~/.claude/projects/*/<session_id>.jsonl`), the report when it was written next to the copy, `env.txt`, `settings.json`, timings and exit code. Note the skill version and `env.txt` with the score.
+
+With another agent: a fresh session in the scratch copy, the skills installed or the `SKILL.md` given as context, the same prompt, and the same isolation by the agent's own means.
 
 Run each variant. Optionally run twice: once with scanners installed, once with none, to measure what reasoning alone finds.
+
+### Isolation
+
+The reviewed code is untrusted, and a review runs it: on 2026-10-28, bench v2 reviews run with `bypassPermissions` installed Go with Homebrew, ran npm install scripts, built a Python package from source and ran third-party tests on the host, and Claude Code tried to start the MCP server declared in a reviewed repository's `.mcp.json`. With that old invocation (`--setting-sources project,local`), a copy's `.mcp.json` server starts without any prompt; `run-review.sh` prevents it:
+
+- **Shell in Claude Code's sandbox, no way out** (`allowUnsandboxedCommands: false`). It writes only in the copy's folder (`review.XXXXXX/`, with its own `TMPDIR`, caches and Claude Code temporary folder), never in `/tmp/claude-<uid>`, where other sessions keep their scratchpads. It cannot read credentials (`~/.ssh`, `~/.aws`, `~/.config`, keychains…), `~/Developer`, iCloud, `~/.claude` or `~/Library/Caches`, where earlier results live. Its network reaches only the scanners' sources (Semgrep rules, Trivy checks, OSV, KEV, EPSS); `--offline` closes those too. It cannot connect to the session's messaging socket, which Claude Code exposes to it.
+- **Nothing from the copy, the user or the machine configures the session**: `--setting-sources ""`, `--strict-mcp-config` with no server, hooks off, `env -i`.
+- **`acceptEdits`, not `bypassPermissions`**: the file tools write only in the copy; Read is denied on the same private paths. Tools that act through the Claude Code process, outside the sandbox, are denied: web, messages to other local sessions (`SendMessage`), cloud routines and schedules.
+
+`sandbox-check.sh` reviews a trapped copy (an MCP server and hooks that touch canary files, a probe that tries to escape) and judges from outside. With the old invocation, the MCP canary appears.
+
+Effects on the measurement, compared with runs before 2026-10-29: scanners run as before; a proof of concept can still run inside the copy, but cannot install packages (no PyPI, npm, Go proxy, Homebrew) nor start a local server. The tools cannot change during a measurement; `env.txt` lists them, and runs are comparable only with the same `env.txt` (on 2026-10-28, Go appeared halfway through the measurement).
 
 ## 3. Adjudicate
 
