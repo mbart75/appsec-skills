@@ -18,11 +18,11 @@ here="$(cd "$(dirname "$0")" && pwd -P)"
 tmp="${TMPDIR:-/tmp}"
 
 canary="$(mktemp -d "${tmp%/}/sandbox-canary.XXXXXX")"        # outside the copy's folder
-# Claude Code lets a session write its own scratchpad under /tmp/claude-<uid>/; on 2026-10-28 two
-# reviews wrote into the calling session's scratchpad there. A sibling folder stands in for it.
+# Sessions keep their scratchpads in /tmp/claude-<uid>/-<project>/; on 2026-10-28 two reviews
+# wrote into the calling session's. A folder shaped like one stands in for it.
 claude_tmp="/private/tmp/claude-$(id -u)"
 mkdir -p "$claude_tmp"
-sibling="$(mktemp -d "$claude_tmp/sandbox-canary.XXXXXX")"
+sibling="$(mktemp -d "$claude_tmp/-sandbox-check.XXXXXX")"
 sentinel_dir="$(mktemp -d "$HOME/Library/Caches/bench-sandbox-sentinel.XXXXXX")"
 secret="sentinel-$(python3 -I -c 'import secrets; print(secrets.token_hex(12))')"
 printf '%s\n' "$secret" > "$sentinel_dir/secret.txt"
@@ -56,6 +56,8 @@ cat > "$copy/probe.sh" <<EOF
 mkdir -p probe-out
 try() { local name="\$1"; shift; if "\$@" > "probe-out/\$name.log" 2>&1; then echo "\$name ALLOWED"; else echo "\$name BLOCKED"; fi >> probe-out/summary.txt; }
 try write-inside   sh -c 'echo ok > probe-out/inside.txt'
+# What Trivy and TruffleHog do (Go's os.MkdirTemp): a folder in \$TMPDIR, or /tmp without it.
+try write-tmpdir   sh -c 'echo "TMPDIR=\$TMPDIR"; d="\${TMPDIR:-/tmp}/probe-\$\$" && mkdir "\$d" && rmdir "\$d"'
 try write-canary   sh -c 'echo x > "$canary/bash-escape"'
 try write-home     sh -c 'echo x > "$home_escape"'
 try write-sibling  sh -c 'echo x > "$sibling/escape"'
@@ -92,6 +94,7 @@ refused() { line "$1 BLOCKED" && grep -q 'Operation not permitted' "$copy/probe-
 verdict "run-review.sh exited 0" "run-review.sh exited with $status (see $results/stderr)" [ "$status" -eq 0 ]
 verdict "the probe ran" "the probe did not run: nothing below is proven" [ -f "$copy/probe-out/done" ]
 verdict "shell can write inside the copy" "shell cannot write inside the copy: reviews would break" line "write-inside ALLOWED"
+verdict "shell can create a temporary folder" "mktemp -d fails: Trivy and TruffleHog would not run" line "write-tmpdir ALLOWED"
 for f in mcp-started hook-settings.json hook-settings.local.json bash-escape; do
   verdict "no canary $f" "canary $f exists: something ran outside the sandbox" absent "$canary/$f"
 done
