@@ -27,8 +27,10 @@ sentinel_dir="$(mktemp -d "$HOME/Library/Caches/bench-sandbox-sentinel.XXXXXX")"
 secret="sentinel-$(python3 -I -c 'import secrets; print(secrets.token_hex(12))')"
 printf '%s\n' "$secret" > "$sentinel_dir/secret.txt"
 home_escape="$HOME/.bench-sandbox-escape-$$"
+leftover="sandbox-check-leftover.$$"
 work="$(mktemp -d "${tmp%/}/review.XXXXXX")"
 copy="$work/project"
+work_real="$(cd "$work" && pwd -P)"                             # run-review.sh resolves /var to /private/var
 results="$work-results"
 cleanup() {
   rm -rf "$sentinel_dir" "$home_escape" "$sibling"
@@ -58,9 +60,15 @@ try() { local name="\$1"; shift; if "\$@" > "probe-out/\$name.log" 2>&1; then ec
 try write-inside   sh -c 'echo ok > probe-out/inside.txt'
 # What Trivy and TruffleHog do (Go's os.MkdirTemp): a folder in \$TMPDIR, or /tmp without it.
 try write-tmpdir   sh -c 'echo "TMPDIR=\$TMPDIR"; d="\${TMPDIR:-/tmp}/probe-\$\$" && mkdir "\$d" && rmdir "\$d"'
+try tmpdir-private sh -c 'case "\$TMPDIR" in "$work_real"/*) ;; *) exit 1 ;; esac'
+try write-bashenv  sh -c 'echo "touch $canary/bashenv-ran" >> "$work_real.bash_env"'
 try write-canary   sh -c 'echo x > "$canary/bash-escape"'
 try write-home     sh -c 'echo x > "$home_escape"'
 try write-sibling  sh -c 'echo x > "$sibling/escape"'
+# Left in /tmp/claude-<uid> on purpose, as a tool that ignores TMPDIR would: run-review.sh must
+# move it into the results.
+try leftover       sh -c 'mkdir "$claude_tmp/$leftover" && echo x > "$claude_tmp/$leftover/f"'
+try git-no-config  sh -c 'test -z "\$(git config --global --list 2>/dev/null)"'
 try read-sentinel  cat "$sentinel_dir/secret.txt"
 try list-developer ls "$HOME/Developer"
 try net-pypi       curl -sS -m 15 -o /dev/null https://pypi.org/simple/
@@ -88,6 +96,7 @@ fail=0
 verdict() { local yes="$1" no="$2"; shift 2; if "$@"; then printf 'PASS  %s\n' "$yes"; else printf 'FAIL  %s\n' "$no"; fail=1; fi; }
 line() { grep -qx "$1" "$copy/probe-out/summary.txt" 2>/dev/null; }
 absent() { [ ! -e "$1" ]; }
+moved() { line "leftover ALLOWED" && [ -f "$results/shared-tmp/$1/f" ] && [ ! -e "$claude_tmp/$1" ]; }
 # Refused by the sandbox, not merely failing (a missing socket file would also fail).
 refused() { line "$1 BLOCKED" && grep -q 'Operation not permitted' "$copy/probe-out/$1.log"; }
 
@@ -95,10 +104,15 @@ verdict "run-review.sh exited 0" "run-review.sh exited with $status (see $result
 verdict "the probe ran" "the probe did not run: nothing below is proven" [ -f "$copy/probe-out/done" ]
 verdict "shell can write inside the copy" "shell cannot write inside the copy: reviews would break" line "write-inside ALLOWED"
 verdict "shell can create a temporary folder" "mktemp -d fails: Trivy and TruffleHog would not run" line "write-tmpdir ALLOWED"
-for f in mcp-started hook-settings.json hook-settings.local.json bash-escape; do
+verdict "shell's TMPDIR is this run's own" "shell's TMPDIR is shared with other runs" line "tmpdir-private ALLOWED"
+verdict "BASH_ENV file read-only for the shell" "the shell could rewrite BASH_ENV" line "write-bashenv BLOCKED"
+for f in mcp-started hook-settings.json hook-settings.local.json bash-escape bashenv-ran; do
   verdict "no canary $f" "canary $f exists: something ran outside the sandbox" absent "$canary/$f"
 done
 verdict "no write in \$HOME" "the shell wrote in \$HOME" absent "$home_escape"
+verdict "what the run left in the shared TMPDIR moved into its results" "a leftover stays in /tmp/claude-<uid> for the next run" \
+  moved "$leftover"
+verdict "git reads no global configuration" "git reads the user's global configuration" line "git-no-config ALLOWED"
 verdict "no write in another session's temporary folder" "the shell wrote in $sibling" absent "$sibling/escape"
 verdict "shell cannot read ~/Library/Caches" "shell read the sentinel in ~/Library/Caches" line "read-sentinel BLOCKED"
 verdict "shell cannot list ~/Developer" "shell listed ~/Developer" line "list-developer BLOCKED"

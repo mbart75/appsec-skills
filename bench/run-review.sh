@@ -83,7 +83,22 @@ if [ -n "$expect" ] && ! diff -u "$expect" "$results/env.txt" >&2; then
   exit 1
 fi
 
-mkdir -p "$work/tmp" "$work/cache"
+# The sandbox sets the shell's TMPDIR to /tmp/claude-<uid>, shared by every session: on 2026-10-28
+# runs reused each other's $TMPDIR/appsec-out there. BASH_ENV points the shell back at $work/tmp;
+# the file sits next to $work, readable by the sandbox but not writable, so the reviewed code
+# cannot change what every later shell sources. A tool that still writes in /tmp/claude-<uid> has
+# its files moved into the results afterwards (below), hence one run at a time.
+shared_tmp="/private/tmp/claude-$(id -u)"
+lock="${TMPDIR:-/tmp}/appsec-bench-run.lock"
+mkdir "$lock" 2>/dev/null || { echo "another bench run is in progress ($lock): runs must not overlap" >&2; exit 1; }
+trap 'rmdir "$lock"' EXIT
+mkdir -p "$shared_tmp"
+entries() { find "$shared_tmp" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort; }
+entries > "$results/shared-tmp-before.txt"
+
+mkdir -p "$work/tmp" "$work/cache" "$work/config"
+bash_env="$work.bash_env"
+printf 'export TMPDIR=%q\n' "$work/tmp" > "$bash_env"
 # Claude Code's own temporary folder (scratchpad, task outputs) moves inside $work too. One copy,
 # one run: a second run on the same copy would see the first one's files.
 [ -e "$work/claude" ] && { echo "this copy was already reviewed: make a fresh one with setup.sh" >&2; exit 1; }
@@ -98,7 +113,7 @@ if [ "$skill" -eq 1 ]; then
   plugin=(--plugin-dir "$work/plugin")
 fi
 
-python3 -I - "$results/settings.json" "$work" "$offline" "/private/tmp/claude-$(id -u)" <<'PY'
+python3 -I - "$results/settings.json" "$work" "$offline" "$shared_tmp" <<'PY'
 import json, sys
 import os
 out, work, offline, shared_tmp = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4]
@@ -155,10 +170,12 @@ date +%s > "$results/start"
 status=0
 # env -i: nothing from the calling session reaches the reviewer. Claude Code still hands its shell
 # the reviewer session's own messaging socket and token; the sandbox keeps that socket out of
-# reach (sandbox-check.sh tests it). The caches point inside $work.
+# reach (sandbox-check.sh tests it). The caches point inside $work, and git reads no global or
+# system configuration (no user's hooks template, excludes or aliases).
 (cd "$copy" && printf '%s' "$prompt" | env -i HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" \
   PATH="$path" SHELL=/bin/bash LANG=en_US.UTF-8 TMPDIR="$work/tmp" CLAUDE_CODE_TMPDIR="$work/claude" \
-  XDG_CACHE_HOME="$work/cache" \
+  XDG_CACHE_HOME="$work/cache" XDG_CONFIG_HOME="$work/config" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+  BASH_ENV="$bash_env" \
   GOPATH="$work/cache/go" GOCACHE="$work/cache/go-build" GOTOOLCHAIN=local GOPROXY=off \
   npm_config_cache="$work/cache/npm" PIP_CACHE_DIR="$work/cache/pip" \
   "$claude_bin" -p --model "$model" \
@@ -170,6 +187,16 @@ status=0
     > "$results/stream.jsonl" 2> "$results/stderr") || status=$?
 date +%s > "$results/end"
 echo "$status" > "$results/exit"
+mv "$bash_env" "$results/bash_env"
+# What the run created in the shared TMPDIR (scanner outputs, scratch files) moves into the
+# results: evidence for this run, and nothing left for the next one to find. Claude Code's own
+# entries (session folders "-<project>", cwd-*, zsh) stay.
+entries | while IFS= read -r e; do
+  case "$e" in -*|cwd-*|zsh|bash-edit-diff|cc-socks|cache-break-state-*) continue ;; esac
+  grep -qxF -- "$e" "$results/shared-tmp-before.txt" && continue
+  mkdir -p "$results/shared-tmp"
+  mv -- "$shared_tmp/$e" "$results/shared-tmp/" || echo "could not move $shared_tmp/$e" >&2
+done
 # init.json: what the session really had (tools, MCP servers, skills, plugins). out.json: the
 # final result (message, cost, session id). A run that had an MCP server or a tool acting
 # outside the sandbox is not a valid bench run: on 2026-10-28 every run had the user's claude.ai
@@ -205,9 +232,10 @@ then
   echo invalid > "$results/exit"
   exit 3
 fi
-# Reports written outside the copy, in its folder (the skill keeps reports out of the repository;
-# Claude Code points the shell's TMPDIR at $work/claude, where scanner outputs usually land).
-find "$work" \( -path "$copy" -o -path "$work/cache" -o -path "$work/plugin" \) -prune -o -type f -name '*report*.md' -print \
-  | while IFS= read -r f; do cp "$f" "$results/"; done
+# Reports written outside the copy (the skill keeps reports out of the repository): in its folder,
+# or in the shared TMPDIR, moved above.
+find "$work" "$results/shared-tmp" \( -path "$copy" -o -path "$work/cache" -o -path "$work/plugin" \) -prune \
+  -o -type f -name '*report*.md' -print 2>/dev/null \
+  | while IFS= read -r f; do cp "$f" "$results/"; done || true
 echo "$results"
 exit "$status"
