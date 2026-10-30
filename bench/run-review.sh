@@ -99,7 +99,9 @@ mkdir "$lock" 2>/dev/null || { echo "another bench run is in progress ($lock): r
 trap 'rmdir "$lock"' EXIT
 # Ledger of what earlier runs left in /tmp/claude-<uid>, kept where the sandbox cannot write. A run
 # does not start while one of those is still there: it would find an earlier run's outputs.
-ledger="${TMPDIR:-/tmp}/appsec-bench-leftovers.txt"
+# Fixed place, whatever the caller's TMPDIR, inside the home folder the sandbox cannot write.
+ledger="$HOME/Library/Caches/appsec-bench/leftovers.txt"
+mkdir -p "$(dirname "$ledger")"
 touch "$ledger"
 stale="$(while IFS= read -r e; do if [ -n "$e" ] && [ -e "$shared_tmp/$e" ]; then echo "$shared_tmp/$e"; fi; done < "$ledger")"
 if [ -n "$stale" ]; then
