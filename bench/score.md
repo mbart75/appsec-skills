@@ -11,15 +11,40 @@ The copy contains the application only. The reviewing agent must not see this re
 
 ## 2. Run the review
 
-- Start a **fresh** agent session with its working directory set to the scratch copy.
-- Make the skills available (installed in the agent, or the `SKILL.md` given as context).
-- Use exactly this prompt, so runs stay comparable:
+With Claude Code, always through the harness, never with a plain `claude -p`:
 
-  > Use the appsec-review skill in full mode on this repository.
+```bash
+bench/sandbox-check.sh                                  # once per measurement: every line must say PASS
+bench/run-review.sh "$copy" ~/Library/Caches/<measurement>/run1   # one fresh session per run
+bench/run-review.sh --no-skill "$copy" .../base1        # baseline without the skills
+bench/run-review.sh --expect-env .../run1/env.txt "$copy" .../run2   # same tools as run 1, or stop
+```
 
-- Save the report. Note the agent, the model, the skill version and which scanners were installed.
+It loads this repository's `skills/` at `--ref` (default `HEAD`), uses Claude Haiku 5.5 and exactly this prompt, so runs stay comparable:
+
+> Use the appsec-review skill in full mode on this repository.
+
+The results folder gets `out.json` (final message, cost, session id: the transcript is `~/.claude/projects/*/<session_id>.jsonl`), `init.json` (the tools, MCP servers, skills and plugins the session really had), `stream.jsonl`, `reports/` (every Markdown file the run wrote outside the copy: the report is there), `shared-tmp/` (what it left in `/tmp/claude-<uid>`), `env.txt`, `settings.json`, timings and exit code. Exit code 3 means an invalid run: the session had an MCP server or a tool that acts outside the sandbox. Note the skill version and `env.txt` with the score.
+
+With another agent: a fresh session in the scratch copy, the skills installed or the `SKILL.md` given as context, the same prompt, and the same isolation by the agent's own means.
 
 Run each variant. Optionally run twice: once with scanners installed, once with none, to measure what reasoning alone finds.
+
+### Isolation
+
+The reviewed code is untrusted, and a review runs it: on 2026-10-28, bench v2 reviews run with `bypassPermissions` installed Go with Homebrew, ran npm install scripts, built a Python package from source and ran third-party tests on the host, and Claude Code tried to start the MCP server declared in a reviewed repository's `.mcp.json`. With that old invocation (`--setting-sources project,local`), a copy's `.mcp.json` server starts without any prompt; `run-review.sh` prevents it:
+
+- **Shell in Claude Code's sandbox, no way out** (`allowUnsandboxedCommands: false`). It writes only in the copy's folder (`review.XXXXXX/`, with its own `TMPDIR`, caches and Claude Code's temporary folder) and in `/tmp/claude-<uid>`, which the sandbox needs for itself. The sandbox also sets `TMPDIR` to that shared folder; a read-only `BASH_ENV` file points the shell back at `review.XXXXXX/tmp`, so scanner outputs cannot meet another run's (on 2026-10-28, runs reused `$TMPDIR/appsec-out`). In `/tmp/claude-<uid>`, the `-<project>` folders, where other sessions keep their scratchpads, are closed to writing (those that exist when the run starts), and whatever a run still creates there is copied into its results, never moved (other sessions write there too); the next run refuses to start until those leftovers are removed, and runs go one at a time (a lock refuses overlaps). It cannot read the home folder (credentials, `~/.claude.json`, shell history, notes, other projects, earlier results in `~/Library/Caches`; only the PowerShell modules, for PSScriptAnalyzer, stay readable), nor this repository wherever it is cloned (answer keys), nor query the keychain. Its network reaches only the scanners' sources (Semgrep rules, Trivy checks, OSV, KEV, EPSS, Checkov guidelines); `--offline` closes those too. It cannot connect to the session's messaging socket, which Claude Code exposes to it.
+- **Nothing from the copy, the user or the machine configures the session**: `--setting-sources ""`, `--strict-mcp-config` with no server, hooks off, `env -i`, and git reads no global or system configuration. With the old invocation, every 2026-10-28 run also had the user's claude.ai connectors (Gmail, Calendar, Notion, Docs: 113 tools); none was called, by luck. `init.json` now proves there is none.
+- **`acceptEdits`, not `bypassPermissions`**: the file tools write only in the copy's folder; Read is denied on the home folder and this repository. Tools that act through the Claude Code process, outside the sandbox, are denied: web, messages to other local sessions (`SendMessage`), cloud routines and schedules.
+
+`sandbox-check.sh` reviews a trapped copy (an MCP server and hooks that touch canary files, a probe that tries to escape) and judges from outside. With the old invocation, the MCP canary appears.
+
+What it does not stop: the reviewer's context still holds the account's e-mail address (Claude Code puts it in the system prompt), and the reviewed code can reach the scanners' hosts, some of which accept uploads with credentials an attacker would plant in the repository (`ghcr.io`). With the home folder unreadable, what could leave that way is the reviewed code itself and the tools' public files. `--offline` closes the network entirely, at the cost of Semgrep (skipped offline) and Trivy's newer checks.
+
+The harness is a safety net, not the sandbox that `appsec-review` asks the user to provide before running a proof of concept. The bench prompt names no sandbox, so under the skill's rule the reviewer must not run the reviewed code at all; a run that does is a skill failure, visible in its transcript. The harness also falls short of that sandbox's conditions: it is Claude Code's sandbox on the host, not a container or virtual machine, and the shell can still read the host's files outside the home folder (`/opt/homebrew`, `/etc`, `/Applications`).
+
+Effects on the measurement, compared with runs before 2026-10-29: scanners run as before (Claude Code's sandbox refuses some commands whose target path is a shell variable, such as `mkdir "$TMPDIR/x"`, and the reviewer retries with the path written out); a proof of concept can still run inside the copy, but cannot install packages (no PyPI, npm, Go proxy, Homebrew) nor start a local server. The tools cannot change during a measurement; `env.txt` lists them, and runs are comparable only with the same `env.txt`. On 2026-10-28, a review installed Go halfway through the measurement; it was removed on 2026-10-29, so from then on the reference environment has no Go (`go -` in `env.txt`), and Go code is reviewed without `go test` or `go build`.
 
 ## 3. Adjudicate
 

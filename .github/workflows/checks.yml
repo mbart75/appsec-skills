@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
 
       - name: ShellCheck (shipped and bench scripts; bench/vulnerable-app is flawed on purpose)
-        run: shellcheck install.sh scripts/*.sh skills/appsec-review/scripts/*.sh tests/*.sh bench/setup.sh bench/*/setup.sh bench/rls-sql/run.sh
+        run: shellcheck install.sh scripts/*.sh skills/appsec-review/scripts/*.sh tests/*.sh bench/setup.sh bench/*/setup.sh bench/run-review.sh bench/sandbox-check.sh bench/rls-sql/run.sh
 
       - name: Python
         run: |
