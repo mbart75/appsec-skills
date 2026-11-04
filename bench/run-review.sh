@@ -62,7 +62,7 @@ work="$(dirname "$copy")"
 case "$(basename "$work")" in review.*) ;; *) echo "not a bench copy (expected .../review.XXXXXX/<name>): $copy" >&2; exit 1 ;; esac
 case "$work/" in
   "$HOME"/*|"$repo"/*) echo "the copy must live outside the home folder and this repository" >&2; exit 1 ;;
-  /tmp/claude-*|/private/tmp/claude-*) echo "the copy must live outside /tmp/claude-<uid>, which the sandbox lets every run write" >&2; exit 1 ;;
+  /tmp/claude-*|/private/tmp/claude-*) echo "the copy must live outside /tmp/claude-<uid>, shared by every session" >&2; exit 1 ;;
 esac
 [ -e "$results" ] && { echo "results folder already exists: $results" >&2; exit 1; }
 mkdir -p "$results"
@@ -102,7 +102,17 @@ mkdir -p "$shared_tmp"
 lock="$shared_tmp/appsec-bench-run.lock"
 mkdir "$lock" 2>/dev/null || { echo "another bench run is in progress ($lock): runs must not overlap" >&2; exit 1; }
 run_tmp=""
-trap 'rmdir "$lock"; [ -z "$run_tmp" ] || rm -rf "$run_tmp"' EXIT
+# Each step guarded: a failing cleanup must neither skip the next one nor change the exit code
+# (3 means an invalid run). Read-only folders the run left are made writable first.
+# shellcheck disable=SC2329 # invoked by the EXIT trap below
+finish() {
+  rmdir "$lock" 2>/dev/null || echo "could not remove the lock $lock" >&2
+  if [ -n "$run_tmp" ]; then
+    chmod -R u+w "$run_tmp" 2>/dev/null || true
+    rm -rf "$run_tmp" 2>/dev/null || echo "could not remove $run_tmp" >&2
+  fi
+}
+trap finish EXIT
 # One copy, one run: a second run on the same copy would see the first one's files.
 mkdir "$work/cache" 2>/dev/null || { echo "this copy was already reviewed: make a fresh one with setup.sh" >&2; exit 1; }
 mkdir -p "$work/config"
@@ -198,10 +208,12 @@ echo "$end" > "$results/end"
 echo "$status" > "$results/exit"
 # Everything the run wrote in its temporary folder (scanner outputs, reports, Claude Code's own
 # scratchpad and task outputs) goes into the results; the folder is then removed (trap).
-# Sockets are not copied.
+# Only folders, symbolic links (copied as links, never followed) and files with a single link:
+# no socket, no FIFO (a later grep -r of the results would hang on it), and no hard link, which
+# could name a file of the home folder the sandbox kept the reviewer from reading.
 mkdir -p "$results/tmp"
-(cd "$run_tmp" && find . ! -type s -print0 | cpio -0 -pdm --quiet "$results/tmp") \
-  || echo "could not copy all of $run_tmp into the results" >&2
+(cd "$run_tmp" && find . \( -type d -o -type l -o \( -type f -links 1 \) \) -print0 \
+  | cpio -0 -pdm --quiet "$results/tmp") || echo "could not copy all of $run_tmp into the results" >&2
 # A sleep during the run inflates its time and tokens, or breaks it ("Your computer went to sleep
 # mid-response"): recorded, so the run can be judged.
 if [ -x /usr/bin/pmset ]; then
@@ -258,13 +270,15 @@ then
   exit 3
 fi
 # Every Markdown file the run wrote outside the copy: the skill keeps reports out of the
-# repository, and report names vary from run to run. The relative path goes into the name.
-mkdir -p "$results/reports"
+# repository, and report names vary from run to run. Kept at their place under reports/work/
+# (the copy's folder) and reports/tmp/ (the run's temporary folder); same filter as above.
 for root in "$work" "$results/tmp"; do
+  case "$root" in "$work") dest="$results/reports/work" ;; *) dest="$results/reports/tmp" ;; esac
   (cd "$root" && find . \( -path "./$(basename "$copy")" -o -path ./cache -o -path ./plugin \) -prune \
-    -o -type f -name '*.md' -print) | while IFS= read -r f; do
-    cp "$root/$f" "$results/reports/$(printf '%s' "${f#./}" | tr / _)"
-  done
+    -o -type f -links 1 -name '*.md' -print0) | while IFS= read -r -d '' f; do
+    mkdir -p "$dest/$(dirname "${f#./}")" && cp -P "$root/$f" "$dest/${f#./}" \
+      || echo "could not copy the report $root/$f" >&2
+  done || echo "could not collect every report" >&2
 done
 echo "$results"
 exit "$status"
