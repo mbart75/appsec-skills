@@ -103,12 +103,13 @@ lock="$shared_tmp/appsec-bench-run.lock"
 mkdir "$lock" 2>/dev/null || { echo "another bench run is in progress ($lock): runs must not overlap" >&2; exit 1; }
 run_tmp=""
 # Each step guarded: a failing cleanup must neither skip the next one nor change the exit code
-# (3 means an invalid run). Read-only folders the run left are made writable first.
+# (3 means an invalid run). Read-only folders the run left are made writable first: folders only,
+# since a chmod of a file would reach, through a hard link, a file outside the folder.
 # shellcheck disable=SC2329 # invoked by the EXIT trap below
 finish() {
   rmdir "$lock" 2>/dev/null || echo "could not remove the lock $lock" >&2
   if [ -n "$run_tmp" ]; then
-    chmod -R u+w "$run_tmp" 2>/dev/null || true
+    find "$run_tmp" -type d ! -perm -u+w -exec chmod u+w {} + 2>/dev/null || true
     rm -rf "$run_tmp" 2>/dev/null || echo "could not remove $run_tmp" >&2
   fi
 }
@@ -214,6 +215,8 @@ echo "$status" > "$results/exit"
 mkdir -p "$results/tmp"
 (cd "$run_tmp" && find . \( -type d -o -type l -o \( -type f -links 1 \) \) -print0 \
   | cpio -0 -pdm --quiet "$results/tmp") || echo "could not copy all of $run_tmp into the results" >&2
+# cpio keeps the folders' modes: a read-only one would make the results hard to delete.
+find "$results/tmp" -type d ! -perm -u+w -exec chmod u+w {} + 2>/dev/null || true
 # A sleep during the run inflates its time and tokens, or breaks it ("Your computer went to sleep
 # mid-response"): recorded, so the run can be judged.
 if [ -x /usr/bin/pmset ]; then
