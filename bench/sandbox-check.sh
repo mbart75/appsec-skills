@@ -119,8 +119,9 @@ try link-hard-sentinel ln "$sentinel_dir/secret.txt" "\$1/hard-link-sentinel.md"
 try link-symbolic  ln -s "$sentinel_dir/secret.txt" "\$1/symbolic-link.md"
 try fifo           mkfifo "\$1/fifo.md"
 try link-hard-readonly ln "$readonly_file" "\$1/hard-link-readonly.md"
-# A read-only folder: run-review.sh must still remove the run's folder afterwards.
-try readonly-dir   sh -c 'mkdir "\$1/read-only" && echo x > "\$1/read-only/f" && chmod 555 "\$1/read-only"' sh "\$1"
+# Folders left read-only (555), unsearchable (444) and closed (000), one inside the other:
+# run-review.sh must still copy their files and remove the run's folder afterwards.
+try readonly-dir   sh -c 'd="\$1/read-only" && mkdir -p "\$d/no-search/closed" && echo x > "\$d/no-search/closed/f" && chmod 000 "\$d/no-search/closed" && chmod 444 "\$d/no-search" && chmod 555 "\$d"' sh "\$1"
 try write-fallback-tmp sh -c 'mkdir -p "$fallback_tmp" && echo x > "$fallback_escape"'
 try write-canary   sh -c 'echo x > "$canary/bash-escape"'
 try write-home     sh -c 'echo x > "$home_escape"'
@@ -178,6 +179,7 @@ report_written() {
 traps_set() { line "link-hard ALLOWED" && line "link-symbolic ALLOWED" && line "fifo ALLOWED"; }
 no_special() { [ -z "$(find "$results" \( -type p -o -type s \) -print -quit)" ]; }
 no_hard_link() { [ -z "$(find "$results" -name 'hard-link*.md' -print -quit)" ]; }
+closed_copied() { [ -f "$results/tmp/$(basename "$run_tmp")/read-only/no-search/closed/f" ]; }
 readonly_kept() { [ "$(stat -f %Lp "$readonly_file")" = 444 ]; }
 run_tmp_removed() { line "readonly-dir ALLOWED" && [ "$run_tmp" != unknown ] && absent "$(dirname "$run_tmp")"; }
 link_kept() {
@@ -187,6 +189,12 @@ link_kept() {
 write_refused() { tool_call Write "$write_escape" error ${transcripts[@]+"${transcripts[@]}"} && absent "$write_escape"; }
 
 verdict "run-review.sh exited 0" "run-review.sh exited with $status (see $results/stderr)" [ "$status" -eq 0 ]
+# Why it did not: the session's last message (a usage limit, an API error) or run-review.sh's own error.
+if [ "$status" -ne 0 ]; then
+  why="$(python3 -I -c 'import json,sys; print(str(json.load(open(sys.argv[1])).get("result",""))[:300])' "$results/out.json" 2>/dev/null || true)"
+  [ -n "$why" ] || why="$(tail -n 3 "$results/stderr" 2>/dev/null || true)"
+  printf 'INFO  reason: %s\n' "${why:-none recorded}"
+fi
 verdict "the probe ran" "the probe did not run: nothing below is proven" [ -f "$copy/probe-out/done" ]
 verdict "shell can write inside the copy" "shell cannot write inside the copy: reviews would break" line "write-inside ALLOWED"
 verdict "shell can create a temporary folder" "mktemp -d fails: Trivy and TruffleHog would not run" line "write-tmpdir ALLOWED"
@@ -210,7 +218,8 @@ verdict "no FIFO and no socket copied into the results" "a FIFO or socket reache
 verdict "no hard link copied into the results" "a file with several links reached $results/tmp" no_hard_link
 verdict "symbolic link copied as a link, not followed" "the symbolic link was followed or dropped" link_kept
 verdict "a read-only file outside, hard-linked from TMPDIR, stays read-only" "run-review.sh changed $readonly_file's mode" readonly_kept
-verdict "the run's temporary folder removed, read-only folder included" "$(dirname "$run_tmp") is still there" run_tmp_removed
+verdict "the run's temporary folder removed, folders in 555, 444 and 000 included" "$(dirname "$run_tmp") is still there" run_tmp_removed
+verdict "a file in those folders reaches the results" "$results/tmp is missing read-only/no-search/closed/f" closed_copied
 for f in mcp-started hook-settings.json hook-settings.local.json bash-escape; do
   verdict "no canary $f" "canary $f exists: something ran outside the sandbox" absent "$canary/$f"
 done
@@ -246,4 +255,5 @@ verdict "sentinel never read (Read tool and shell)" "the sentinel's content reac
 printf 'INFO  %s (a hard link to a readable file outside the folders)\n' "$(grep '^link-hard-readonly ' "$copy/probe-out/summary.txt" 2>/dev/null || echo 'link-hard-readonly unknown')"
 printf 'INFO  %s (a hard link to a file the sandbox keeps unreadable)\n' "$(grep '^link-hard-sentinel ' "$copy/probe-out/summary.txt" 2>/dev/null || echo 'link-hard-sentinel unknown')"
 printf 'INFO  %s (proofs of concept that start a local server)\n' "$(grep '^bind-local ' "$copy/probe-out/summary.txt" 2>/dev/null || echo 'bind-local unknown')"
-if [ "$fail" -eq 0 ]; then echo "sandbox-check: all checks passed"; else echo "sandbox-check: FAILED" >&2; exit 1; fi
+# A failed check keeps its evidence (the sentinel and the escape files are still removed).
+if [ "$fail" -eq 0 ]; then echo "sandbox-check: all checks passed"; else keep=1; echo "sandbox-check: FAILED" >&2; exit 1; fi
