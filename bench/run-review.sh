@@ -110,7 +110,7 @@ run_tmp=""
 # the link itself if one replaced a folder meanwhile.
 open_folders() { find "$1" -type d ! -perm -u=rwx -exec chmod -h u+rwx {} \; 2>/dev/null || true; }
 # ShellCheck takes finish for unreachable (SC2317, SC2329 in newer versions): the EXIT
-# trap below calls them.
+# trap below calls it.
 # shellcheck disable=SC2317,SC2329
 finish() {
   rmdir "$lock" 2>/dev/null || echo "could not remove the lock $lock" >&2

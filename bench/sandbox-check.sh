@@ -192,7 +192,7 @@ verdict "run-review.sh exited 0" "run-review.sh exited with $status (see $result
 # Why it did not: the session's last message (a usage limit, an API error) or run-review.sh's own error.
 if [ "$status" -ne 0 ]; then
   why="$(python3 -I -c 'import json,sys; print(str(json.load(open(sys.argv[1])).get("result",""))[:300])' "$results/out.json" 2>/dev/null || true)"
-  [ -n "$why" ] || why="$(tail -n 3 "$results/stderr" 2>/dev/null || true)"
+  [ -n "$why" ] || why="$(tail -n 3 "$results/stderr" 2>/dev/null | tr "\n" " " || true)"
   printf 'INFO  reason: %s\n' "${why:-none recorded}"
 fi
 verdict "the probe ran" "the probe did not run: nothing below is proven" [ -f "$copy/probe-out/done" ]
