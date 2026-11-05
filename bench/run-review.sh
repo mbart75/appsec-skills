@@ -20,14 +20,17 @@
 # install scripts and third-party tests on the host, and Claude Code tried to start the MCP
 # server declared in the reviewed repository's .mcp.json. Here:
 # - every shell command of the reviewer runs in Claude Code's sandbox, with no way out
-#   (allowUnsandboxedCommands false): it writes only inside the copy's parent folder (and in
-#   /tmp/claude-<uid>, which the sandbox needs), cannot read the home folder or this repository,
-#   and reaches only the scanners' sources;
+#   (allowUnsandboxedCommands false): it writes only inside the copy's parent folder and in this
+#   run's own temporary folder (copied into the results), cannot read the home folder or this
+#   repository, and reaches only the scanners' sources;
 # - no settings, hooks or MCP servers come from the copy, the user or this machine
 #   (--setting-sources "", --strict-mcp-config with no server, hooks off);
-# - acceptEdits replaces bypassPermissions: the file tools write only inside the copy's folder;
+# - acceptEdits replaces bypassPermissions: the file tools write only inside the copy's folder and
+#   the run's temporary folder;
 # - no tool that acts outside the sandbox: web, messages to other sessions, routines, schedules.
-# bench/sandbox-check.sh checks all of this on a trapped copy.
+# bench/sandbox-check.sh checks all of this on a trapped copy. On macOS the Mac is kept awake
+# during the run (caffeinate): in the 2026-11 bench v2 measurement, sleeps broke one run and
+# inflated another. A sleep that still happens (lid closed, battery) is recorded in sleep.txt.
 set -euo pipefail
 
 usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
@@ -59,7 +62,7 @@ work="$(dirname "$copy")"
 case "$(basename "$work")" in review.*) ;; *) echo "not a bench copy (expected .../review.XXXXXX/<name>): $copy" >&2; exit 1 ;; esac
 case "$work/" in
   "$HOME"/*|"$repo"/*) echo "the copy must live outside the home folder and this repository" >&2; exit 1 ;;
-  /tmp/claude-*|/private/tmp/claude-*) echo "the copy must live outside /tmp/claude-<uid>, which the sandbox lets every run write" >&2; exit 1 ;;
+  /tmp/claude-*|/private/tmp/claude-*) echo "the copy must live outside /tmp/claude-<uid>, shared by every session" >&2; exit 1 ;;
 esac
 [ -e "$results" ] && { echo "results folder already exists: $results" >&2; exit 1; }
 mkdir -p "$results"
@@ -87,38 +90,43 @@ if [ -n "$expect" ] && ! diff -u "$expect" "$results/env.txt" >&2; then
   exit 1
 fi
 
-# The sandbox sets the shell's TMPDIR to /tmp/claude-<uid>, shared by every session: on 2026-10-28
-# runs reused each other's $TMPDIR/appsec-out there. BASH_ENV points the shell back at $work/tmp;
-# the file sits next to $work, readable by the sandbox but not writable, so the reviewed code
-# cannot change what every later shell sources. What a tool still writes in /tmp/claude-<uid> is
-# copied into the results afterwards (below), hence one run at a time; the lock lives there too.
+# This run's temporary folder. Claude Code points the shell's TMPDIR at <CLAUDE_CODE_TMPDIR>/claude-<uid>,
+# but only when that path fits in 44 bytes (it holds AF_UNIX sockets); otherwise it falls back to
+# /tmp/claude-<uid>, shared by every session. A folder in $work is far too long, so until
+# 2026-11-04 every run's $TMPDIR was that shared folder: scanner outputs and reports landed there,
+# on 2026-10-28 runs reused each other's $TMPDIR/appsec-out, and the file tools could not write
+# there. Hence a short folder of its own, writable by the shell and the file tools, copied into the
+# results after the run. /tmp/claude-<uid> is closed to writing.
 shared_tmp="/private/tmp/claude-$(id -u)"
 mkdir -p "$shared_tmp"
 lock="$shared_tmp/appsec-bench-run.lock"
 mkdir "$lock" 2>/dev/null || { echo "another bench run is in progress ($lock): runs must not overlap" >&2; exit 1; }
-trap 'rmdir "$lock"' EXIT
-# Ledger of what earlier runs left in /tmp/claude-<uid>, kept where the sandbox cannot write. A run
-# does not start while one of those is still there: it would find an earlier run's outputs.
-# Fixed place, whatever the caller's TMPDIR, inside the home folder the sandbox cannot write.
-ledger="$HOME/Library/Caches/appsec-bench/leftovers.txt"
-mkdir -p "$(dirname "$ledger")"
-touch "$ledger"
-stale="$(while IFS= read -r e; do if [ -n "$e" ] && [ -e "$shared_tmp/$e" ]; then echo "$shared_tmp/$e"; fi; done < "$ledger")"
-if [ -n "$stale" ]; then
-  printf 'left by an earlier run (copied into its results); inspect and remove before the next run:\n%s\n' "$stale" >&2
-  exit 1
-fi
-: > "$ledger"
-entries() { find "$shared_tmp" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort; }
-entries > "$results/shared-tmp-before.txt"
-
-mkdir -p "$work/tmp" "$work/cache" "$work/config"
-bash_env="$work.bash_env"
-printf 'export TMPDIR=%q\n' "$work/tmp" > "$bash_env"
-# Claude Code's own temporary folder (scratchpad, task outputs) moves inside $work too. One copy,
-# one run: a second run on the same copy would see the first one's files.
-[ -e "$work/claude" ] && { echo "this copy was already reviewed: make a fresh one with setup.sh" >&2; exit 1; }
-mkdir -m 700 "$work/claude"
+run_tmp=""
+# Each step guarded: a failing cleanup must neither skip the next one nor change the exit code
+# (3 means an invalid run).
+# open_folders: folders the run left closed or read-only (000, 444, 555) are opened to their owner,
+# each before find descends into it (-exec ... \;). Folders only: a chmod of a file would reach,
+# through a hard link, a file outside. find never follows a symbolic link, and chmod -h acts on
+# the link itself if one replaced a folder meanwhile.
+open_folders() { find "$1" -type d ! -perm -u=rwx -exec chmod -h u+rwx {} \; 2>/dev/null || true; }
+# ShellCheck takes finish for unreachable (SC2317, SC2329 in newer versions): the EXIT
+# trap below calls it.
+# shellcheck disable=SC2317,SC2329
+finish() {
+  rmdir "$lock" 2>/dev/null || echo "could not remove the lock $lock" >&2
+  if [ -n "$run_tmp" ]; then
+    open_folders "$run_tmp"
+    rm -rf "$run_tmp" 2>/dev/null || echo "could not remove $run_tmp" >&2
+  fi
+}
+trap finish EXIT
+# One copy, one run: a second run on the same copy would see the first one's files.
+mkdir "$work/cache" 2>/dev/null || { echo "this copy was already reviewed: make a fresh one with setup.sh" >&2; exit 1; }
+mkdir -p "$work/config"
+run_tmp="$(mktemp -d /private/tmp/bench.XXXXXX)"
+shell_tmp="$run_tmp/claude-$(id -u)"
+[ "${#shell_tmp}" -le 44 ] || { echo "temporary folder path too long for Claude Code: $shell_tmp" >&2; exit 1; }
+printf '%s\n' "$shell_tmp" > "$results/run-tmp"
 # Pinned skills, next to the copy: the results folder may sit in a place the reviewer cannot read.
 plugin=()
 if [ "$skill" -eq 1 ]; then
@@ -129,16 +137,9 @@ if [ "$skill" -eq 1 ]; then
   plugin=(--plugin-dir "$work/plugin")
 fi
 
-python3 -I - "$results/settings.json" "$work" "$offline" "$shared_tmp" "$repo" <<'PY'
+python3 -I - "$results/settings.json" "$work" "$offline" "$shared_tmp" "$repo" "$run_tmp" <<'PY'
 import json, sys
-import os
-out, work, offline, shared_tmp, repo = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4], sys.argv[5]
-# The sandbox points the shell's TMPDIR at /tmp/claude-<uid> and must write there. Inside it, every
-# other session keeps its scratchpad in a "-<project>" folder: those are closed to writing (on
-# 2026-10-28 two reviews wrote into the calling session's). Sessions started during the run are not.
-sessions = sorted(os.path.join(shared_tmp, d) for d in os.listdir(shared_tmp)
-                  if d.startswith("-") and os.path.isdir(os.path.join(shared_tmp, d))) \
-    if os.path.isdir(shared_tmp) else []
+out, work, offline, shared_tmp, repo, run_tmp = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4], sys.argv[5], sys.argv[6]
 # Off-limits for the reviewer: the whole home folder (credentials, ~/.claude.json, shell history,
 # notes, other projects, earlier bench evidence in ~/Library/Caches) and this repository, wherever
 # it is cloned (answer keys). The copy, its folder and the tools live outside the home folder.
@@ -159,13 +160,19 @@ settings = {
         "autoAllowBashIfSandboxed": True,
         "allowUnsandboxedCommands": False,
         # PowerShell modules (PSScriptAnalyzer) install in the home folder: public code, read-only.
-        "filesystem": {"allowWrite": [work], "denyWrite": sessions, "denyRead": private,
+        # /tmp/claude-<uid>: every session's scratchpad ("-<project>" folders; on 2026-10-28 two
+        # reviews wrote into the calling session's) and, until 2026-11-04, every run's outputs.
+        # /tmp/claude: the sandbox's built-in fallback temporary folder, writable by default and
+        # shared by every sandboxed session.
+        "filesystem": {"allowWrite": [work, run_tmp], "denyWrite": [shared_tmp, "/private/tmp/claude"],
+                       "denyRead": private,
                        "allowRead": ["~/.local/share/powershell/Modules"]},
         "network": {"allowedDomains": [] if offline else scanners},
     },
     "permissions": {
         "deny": ["WebFetch", "WebSearch"] + outside
-        + [f"{tool}({p}/**)" for p in rules for tool in ("Read", "Edit")],
+        + [f"{tool}({p}/**)" for p in rules for tool in ("Read", "Edit")]
+        + [f"Edit(/{shared_tmp}/**)"],
     },
     "disableAllHooks": True,
     "enableAllProjectMcpServers": False,
@@ -181,39 +188,60 @@ else prompt="Review this repository for security vulnerabilities. For each findi
 fi
 printf '%s\n' "$model" > "$results/model"
 printf '%s\n' "$copy" > "$results/copy"
-date +%s > "$results/start"
+# Kept awake on macOS: idle sleep and, on AC power, system sleep. Closing the lid still sleeps.
+keepawake=()
+[ -x /usr/bin/caffeinate ] && keepawake=(/usr/bin/caffeinate -i -s)
+start="$(date +%s)"
+echo "$start" > "$results/start"
 status=0
 # env -i: nothing from the calling session reaches the reviewer. Claude Code still hands its shell
 # the reviewer session's own messaging socket and token; the sandbox keeps that socket out of
 # reach (sandbox-check.sh tests it). The caches point inside $work, and git reads no global or
 # system configuration (no user's hooks template, excludes or aliases).
 (cd "$copy" && printf '%s' "$prompt" | env -i HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" \
-  PATH="$path" SHELL=/bin/bash LANG=en_US.UTF-8 TMPDIR="$work/tmp" CLAUDE_CODE_TMPDIR="$work/claude" \
+  PATH="$path" SHELL=/bin/bash LANG=en_US.UTF-8 TMPDIR="$run_tmp" CLAUDE_CODE_TMPDIR="$run_tmp" \
   XDG_CACHE_HOME="$work/cache" XDG_CONFIG_HOME="$work/config" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
-  BASH_ENV="$bash_env" \
   GOPATH="$work/cache/go" GOCACHE="$work/cache/go-build" GOTOOLCHAIN=local GOPROXY=off \
   npm_config_cache="$work/cache/npm" PIP_CACHE_DIR="$work/cache/pip" \
-  "$claude_bin" -p --model "$model" \
+  ${keepawake[@]+"${keepawake[@]}"} "$claude_bin" -p --model "$model" \
     --setting-sources "" --settings "$results/settings.json" \
-    --strict-mcp-config --permission-mode acceptEdits --add-dir "$work" \
+    --strict-mcp-config --permission-mode acceptEdits --add-dir "$work" --add-dir "$run_tmp" \
     --disallowedTools WebSearch WebFetch SendMessage ListAgents RemoteTrigger CronCreate CronDelete \
       ScheduleWakeup PushNotification \
     --output-format stream-json --verbose ${plugin[@]+"${plugin[@]}"} \
     > "$results/stream.jsonl" 2> "$results/stderr") || status=$?
-date +%s > "$results/end"
+end="$(date +%s)"
+echo "$end" > "$results/end"
 echo "$status" > "$results/exit"
-mv "$bash_env" "$results/bash_env"
-# What appeared in /tmp/claude-<uid> during the run (a tool that ignored TMPDIR) is copied into
-# the results as evidence, never moved: other sessions write there too. Claude Code's own entries
-# (session folders "-<project>", cwd-*, zsh, cache-break-state-*) are skipped.
-entries | while IFS= read -r e; do
-  case "$e" in -*|cwd-*|zsh|bash-edit-diff|cc-socks|cache-break-state-*) continue ;; esac
-  grep -qxF -- "$e" "$results/shared-tmp-before.txt" && continue
-  mkdir -p "$results/shared-tmp"
-  cp -R -- "$shared_tmp/$e" "$results/shared-tmp/" || echo "could not copy $shared_tmp/$e" >&2
-  echo "$e" >> "$ledger"
-  echo "left in $shared_tmp: $e (copied into the results; the next run will not start until it is removed)" >&2
-done
+# Everything the run wrote in its temporary folder (scanner outputs, reports, Claude Code's own
+# scratchpad and task outputs) goes into the results; the folder is then removed (trap).
+# Only folders, symbolic links (copied as links, never followed) and files with a single link:
+# no socket, no FIFO (a later grep -r of the results would hang on it), and no hard link, which
+# could name a file of the home folder the sandbox kept the reviewer from reading.
+mkdir -p "$results/tmp"
+open_folders "$run_tmp"
+(cd "$run_tmp" && find . \( -type d -o -type l -o \( -type f -links 1 \) \) -print0 \
+  | cpio -0 -pdm --quiet "$results/tmp") || echo "could not copy all of $run_tmp into the results" >&2
+# A sleep during the run inflates its time and tokens, or breaks it ("Your computer went to sleep
+# mid-response"): recorded, so the run can be judged.
+if [ -x /usr/bin/pmset ]; then
+  /usr/bin/pmset -g log 2>/dev/null | python3 -I -c '
+import sys, datetime
+start, end = int(sys.argv[1]), int(sys.argv[2])
+for line in sys.stdin:
+    if "Entering Sleep" not in line:
+        continue
+    try:
+        t = datetime.datetime.strptime(line[:25], "%Y-%m-%d %H:%M:%S %z").timestamp()
+    except ValueError:
+        continue
+    if start <= t <= end:
+        sys.stdout.write(line)
+' "$start" "$end" > "$results/sleep.txt" || true
+  if [ -s "$results/sleep.txt" ]; then
+    echo "the Mac slept during this run ($results/sleep.txt): its time and tokens are inflated, check its transcript" >&2
+  fi
+fi
 # init.json: what the session really had (tools, MCP servers, skills, plugins). out.json: the
 # final result (message, cost, session id). A run that had an MCP server or a tool acting
 # outside the sandbox is not a valid bench run: on 2026-10-28 every run had the user's claude.ai
@@ -249,12 +277,16 @@ then
   echo invalid > "$results/exit"
   exit 3
 fi
-# Reports written outside the copy (the skill keeps reports out of the repository): in its folder,
-# or in /tmp/claude-<uid>, copied above.
-# Every Markdown file the run wrote outside the copy: report names vary from run to run.
-mkdir -p "$results/reports"
-find "$work" "$results/shared-tmp" \( -path "$copy" -o -path "$work/cache" -o -path "$work/plugin" \) -prune \
-  -o -type f -name '*.md' -print 2>/dev/null \
-  | while IFS= read -r f; do cp "$f" "$results/reports/"; done || true
+# Every Markdown file the run wrote outside the copy: the skill keeps reports out of the
+# repository, and report names vary from run to run. Kept at their place under reports/work/
+# (the copy's folder) and reports/tmp/ (the run's temporary folder); same filter as above.
+for root in "$work" "$results/tmp"; do
+  case "$root" in "$work") dest="$results/reports/work" ;; *) dest="$results/reports/tmp" ;; esac
+  (cd "$root" && find . \( -path "./$(basename "$copy")" -o -path ./cache -o -path ./plugin \) -prune \
+    -o -type f -links 1 -name '*.md' -print0) | while IFS= read -r -d '' f; do
+    mkdir -p "$dest/$(dirname "${f#./}")" && cp -P "$root/$f" "$dest/${f#./}" \
+      || echo "could not copy the report $root/$f" >&2
+  done || echo "could not collect every report" >&2
+done
 echo "$results"
 exit "$status"
