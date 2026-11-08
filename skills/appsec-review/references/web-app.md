@@ -10,13 +10,15 @@ An injection exists when attacker-controlled data reaches an interpreter without
 |---|---|---|
 | SQL | String concatenation or template literals into a query | Bound parameters or a query builder; identifiers from an allow-list |
 | NoSQL | Request objects passed as filters (`{ $ne: null }`) | Type checks; explicit fields |
-| OS commands | `exec`, `system`, `shell=True`, backticks with user data | Argument arrays, no shell; allow-listed values |
+| OS commands | `exec`, `system`, `shell=True`, backticks with user data; an allowed program run with user-chosen arguments | Argument arrays, no shell; allow-listed subcommands and arguments, not only programs (below) |
 | HTML (XSS) | `innerHTML`, `outerHTML`, `document.write`, `dangerouslySetInnerHTML`, `v-html`, unescaped template output | Text APIs (`textContent`), framework auto-escaping, sanitiser (DOMPurify) only when HTML is required |
 | URLs | `href`/`src` from user data (`javascript:` URLs), open redirects | Scheme allow-list; redirect targets from an allow-list |
 | Templates | User data compiled as a template (SSTI) | Data passed as variables only |
 | Deserialization | `pickle`, `yaml.load`, Java/PHP native deserialization of untrusted data | Safe loaders, plain JSON, signed payloads |
 
 "Sanitising input" is not the defence for XSS: encoding at output, for the context where the data lands, is.
+
+**An allow-list of programs is not a boundary** when the attacker controls their arguments, environment or configuration: many programs run commands of their own. `git -c alias.x='!cmd'`, `-c core.pager=…`, `-c core.sshCommand=…` (and `GIT_SSH_COMMAND`, or the `.git/config` of a repository the attacker wrote); `find -exec`; `tar --to-command`, `--checkpoint-action=exec=…`; `rsync -e`; `ssh -o ProxyCommand=…`; `xargs`, `env`, `timeout` and `nice`, which run their argument; `awk 'BEGIN{system("…")}'`. Expected: an allow-list of subcommands and of the arguments each accepts, `--` before user-supplied operands, and refusal of any user value that starts with `-`. GTFOBins lists these behaviours per program.
 
 ## Server-side request forgery
 

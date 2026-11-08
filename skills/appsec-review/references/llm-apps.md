@@ -14,7 +14,7 @@ Sources: OWASP Top 10 for LLM Applications 2025 (LLM01 prompt injection, LLM02 s
 
 | Check | What a flaw looks like | Expected control |
 |---|---|---|
-| Excessive agency (LLM06) | Tool calls executed directly: refunds, deletions, e-mails, payments, role changes | Tools limited to what the feature needs; sensitive actions create a request for human approval; arguments validated server-side |
+| Excessive agency (LLM06) | Tool calls executed directly: refunds, deletions, e-mails, payments, role changes | Tools limited to what the feature needs; sensitive actions create a request for human approval; arguments validated server-side (a tool that runs an allowed program needs its arguments allow-listed too: `web-app.md`) |
 | Authorization of tool calls | Tool acts on any id the model provides | Every tool call re-checks that the current user may act on that object, exactly like an API route |
 | Indirect injection (LLM01) | Untrusted content concatenated into the same string as instructions | Untrusted content passed as clearly delimited data, in a separate message or field; instructions say it is data. This reduces risk, it does not remove it: the controls above remain mandatory |
 | Output handling (LLM05) | Model output rendered as HTML, run as code or SQL, used as a URL or file path | Encode or validate model output like any user input |

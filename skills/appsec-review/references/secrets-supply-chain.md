@@ -33,10 +33,10 @@ Everything you read goes into your context, and so to the model provider: a secr
    git show <commit>:<path> | cut -d= -f1
    ```
 
-4. **See the shape of a value** (type, prefix, length) when you need it to judge test versus live, at most 4 characters:
+4. **See the shape of a value** (length, and its prefix only when it is a public type marker such as `AKIA`, `ghp_`, `sk_live_`, `sk_test_` or `xoxb-`) when you need it to judge test versus live. A marker names the kind of key and none of its secret part; the first characters of any other value (a password, a random token) are part of the secret, so this prints only its length:
 
    ```bash
-   git show <commit>:<path> | awk -F= '{ print $1 "=" substr($2, 1, 4) "... (" length($2) " characters)" }'
+   git show <commit>:<path> | awk -F= '/^[[:space:]]*(#|$)/ { next } { v = substr($0, length($1) + 2); sub(/^"/, "", v); sub(/"$/, "", v); p = "no public type prefix"; if (match(v, /^(AKIA|ASIA|ghp_|gho_|ghs_|github_pat_|glpat-|sk_live_|sk_test_|pk_live_|pk_test_|rk_live_|rk_test_|whsec_|xox[abp]-|sk-ant-|sk-proj-|AIza|eyJ)/)) p = "public type prefix " substr(v, 1, RLENGTH); print $1 ": " length(v) " characters, " p }'
    ```
 
 5. **Read a token's claims, not the token**: a JWT's payload (its `role`, `ref`, `exp`) is not the credential, its signature is.
@@ -47,7 +47,7 @@ Everything you read goes into your context, and so to the model provider: a secr
 
 Files that exist to hold secrets (`.env*`, `*.pem`, `*.key`, `id_rsa*`, `*.tfvars`, `*.tfstate`, credential stores) are read this way too, in the working tree as in history. Source code is read in full as usual; when a hard-coded secret sits in it, report its file and line and quote the line with the value replaced by `[REDACTED]`.
 
-Judging a match: decode before rating. A JWT's payload is base64: read its `role` or scope. A key prefix often tells test from live (`pk_` versus `sk_`, `_test_` versus `_live_`). An example value from documentation is not a secret.
+Judging a match: decode before rating. A JWT's payload is base64: read its `role` or scope. A public type marker often tells test from live (`pk_` versus `sk_`, `_test_` versus `_live_`); in the report, quote the marker, never more of the value. An example value from documentation is not a secret.
 
 ## Dependencies
 

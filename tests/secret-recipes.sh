@@ -72,8 +72,26 @@ check "history: no secret value" no_secret "$out/history"
 run_recipe 1 "$out/names"; check "names: lists both variables" sh -c 'grep -qx DATABASE_URL "$1" && grep -qx LLM_API_KEY "$1"' _ "$out/names"
 check "names: no secret value" no_secret "$out/names"
 
-run_recipe 2 "$out/shape"; check "shape: prefix and length of each value" grep -q '^LLM_API_KEY=llmk\.\.\. ([0-9]* characters)$' "$out/shape"
+run_recipe 2 "$out/shape"; check "shape: length of each value, no prefix for a key without a public marker" grep -qx 'LLM_API_KEY: [0-9][0-9]* characters, no public type prefix' "$out/shape"
 check "shape: no secret value" no_secret "$out/shape"
+no_first_chars() { # file: not even the first 4 characters of a history value
+  local s
+  while IFS= read -r s; do
+    if [ "${#s}" -ge 4 ] && grep -qF -- "${s:0:4}" "$1"; then return 1; fi
+  done < <(git -C "$copy" log --all --format='%H' -- .env.production | while read -r c; do
+    git -C "$copy" show "$c:.env.production" 2>/dev/null | cut -d= -f2-
+  done)
+}
+check "shape: no first characters of a value without a public marker" no_first_chars "$out/shape"
+
+# Public type markers are shown, and nothing after them: fake values written as a blob of the temporary copy.
+filler="$(printf 'Q%.0s' {1..24})"
+blob="$(printf '# comment\nSTRIPE=sk_live_%s\nAWS="AKIA%s"\nSLACK=xoxb-%s\nPLAIN=%s\n' "$filler" "$filler" "$filler" "$filler" | git -C "$copy" hash-object -w --stdin)"
+cmd="${commands[2]}"; cmd="${cmd//<commit>:<path>/$blob}"
+(cd "$copy" && bash -c "$cmd") > "$out/markers" 2>&1
+check "shape: public markers shown" sh -c 'grep -qx "STRIPE: 32 characters, public type prefix sk_live_" "$1" && grep -qx "AWS: 28 characters, public type prefix AKIA" "$1" && grep -qx "SLACK: 29 characters, public type prefix xoxb-" "$1"' _ "$out/markers"
+check "shape: other values get their length only" grep -qx 'PLAIN: 24 characters, no public type prefix' "$out/markers"
+check "shape: nothing after a marker, no comment line" sh -c '! grep -qE "Q|comment" "$1"' _ "$out/markers"
 
 run_recipe 3 "$out/claims"; check "claims: the JWT's role is readable" grep -q '"role" *: *"service_role"' "$out/claims"
 check "claims: no secret value (no signature)" no_secret "$out/claims"

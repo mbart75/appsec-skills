@@ -7,7 +7,7 @@ Sources: OWASP Node.js Security Cheat Sheet, OWASP Cross Site Scripting Preventi
 | Check | Flaw | Expected |
 |---|---|---|
 | Query building | Template literals or `+` into SQL; raw query helpers with interpolation | Parameterised queries (`$1`, `?`), ORM query API |
-| Command execution | `child_process.exec` with variables | `execFile`/`spawn` with argument arrays |
+| Command execution | `child_process.exec` with variables; `execFile`/`spawn` of an allowed program with user-chosen options | `execFile`/`spawn` with argument arrays; allow-listed subcommands and arguments, `--` before user values, none starting with `-` (`web-app.md`) |
 | Code evaluation | `eval`, `new Function`, `vm` as a sandbox | No dynamic code from input; `vm` is not a security boundary |
 | Prototype pollution | Deep merge or `Object.assign` of request bodies into objects; `__proto__`, `constructor` keys accepted | Schema validation (zod, joi, ajv), `Object.create(null)`, maps |
 | Validation | Request bodies used without type checks (`"1" * 2`, arrays where strings expected) | Schema validation at every entry point |

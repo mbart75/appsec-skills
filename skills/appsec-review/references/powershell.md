@@ -6,7 +6,7 @@ Scripts that administer endpoints, directories or tenants usually run with high 
 
 | Check | Flaw | Expected |
 |---|---|---|
-| Code injection | `Invoke-Expression`, `iex`, `[scriptblock]::Create()`, `Add-Type` with caller or file content; string-built commands passed to `cmd /c` or `Start-Process` | Call cmdlets directly with parameters; validate with `[ValidateSet()]`, `[ValidatePattern()]`; build filters with `Where-Object` and variables |
+| Code injection | `Invoke-Expression`, `iex`, `[scriptblock]::Create()`, `Add-Type` with caller or file content; string-built commands passed to `cmd /c` or `Start-Process` | Call cmdlets directly with parameters; validate with `[ValidateSet()]`, `[ValidatePattern()]`; build filters with `Where-Object` and variables; a native program gets allow-listed arguments, `--` before user values, none starting with `-` (`web-app.md`) |
 | Hard-coded credentials | `ConvertTo-SecureString '...' -AsPlainText -Force`, passwords or tokens in variables, API keys in scripts | `Get-Secret` (SecretManagement), Windows Credential Manager, a vault; `Export-Clixml` only for the same user on the same machine (DPAPI) |
 | Credential exposure | Secrets in `Write-Verbose`/`Write-Host`, transcripts, `-Debug` output, exception messages; `SecureString` converted back to plain text and stored | Never log secrets; keep `PSCredential` objects |
 | TLS | `-SkipCertificateCheck`, `ServerCertificateValidationCallback = { $true }`, forcing old protocols | Valid certificates; trust the internal CA properly |
