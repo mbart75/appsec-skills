@@ -39,4 +39,4 @@ When the browser talks to the database directly, the database *is* the API, and 
 
 ## Reporting
 
-Name the operation, the rule it should enforce, and the request an attacker sends: "As customer A, `GET /api/orders/1042` returns customer B's order including address". Rate by the data or action exposed: other users' personal data or money movement is High; full admin or full database is Critical.
+Name the operation, the rule it should enforce, and the request an attacker sends: "As customer A, `GET /api/orders/1042` returns customer B's order including address". Rate by the data or action exposed: other users' personal data or money movement is High; full admin or full database is Critical. Crossing the boundary the owner set (another user, another tenant, data marked private) is at least Medium even when only metadata leaks (titles, names, counts, whether an object exists): the boundary, not the kind of data, sets the floor.

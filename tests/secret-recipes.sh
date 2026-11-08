@@ -72,8 +72,40 @@ check "history: no secret value" no_secret "$out/history"
 run_recipe 1 "$out/names"; check "names: lists both variables" sh -c 'grep -qx DATABASE_URL "$1" && grep -qx LLM_API_KEY "$1"' _ "$out/names"
 check "names: no secret value" no_secret "$out/names"
 
-run_recipe 2 "$out/shape"; check "shape: prefix and length of each value" grep -q '^LLM_API_KEY=llmk\.\.\. ([0-9]* characters)$' "$out/shape"
+run_recipe 2 "$out/shape"; check "shape: length of each value, no prefix for a key without a public marker" grep -qx 'LLM_API_KEY: [0-9][0-9]* characters, no public type prefix' "$out/shape"
 check "shape: no secret value" no_secret "$out/shape"
+no_first_chars() { # file: not even the first 4 characters of a history value
+  local s
+  while IFS= read -r s; do
+    if [ "${#s}" -ge 4 ] && grep -qF -- "${s:0:4}" "$1"; then return 1; fi
+  done < <(git -C "$copy" log --all --format='%H' -- .env.production | while read -r c; do
+    git -C "$copy" show "$c:.env.production" 2>/dev/null | cut -d= -f2-
+  done)
+}
+check "shape: no first characters of a value without a public marker" no_first_chars "$out/shape"
+
+# Public type markers are shown, and nothing after them: fake values written as a blob of the temporary copy.
+filler="$(printf 'Q%.0s' {1..24})"
+blob="$(printf '# comment\nSTRIPE=sk_live_%s\nAWS="AKIA%s"\nSLACK=xoxb-%s\nPLAIN=%s\n' "$filler" "$filler" "$filler" "$filler" | git -C "$copy" hash-object -w --stdin)"
+cmd="${commands[2]}"; cmd="${cmd//<commit>:<path>/$blob}"
+(cd "$copy" && bash -c "$cmd") > "$out/markers" 2>&1
+check "shape: public markers shown" sh -c 'grep -qx "STRIPE: 32 characters, public type prefix sk_live_" "$1" && grep -qx "AWS: 28 characters, public type prefix AKIA" "$1" && grep -qx "SLACK: 29 characters, public type prefix xoxb-" "$1"' _ "$out/markers"
+check "shape: other values get their length only" grep -qx 'PLAIN: 24 characters, no public type prefix' "$out/markers"
+check "shape: nothing after a marker, no comment line" sh -c '! grep -qE "Q|comment" "$1"' _ "$out/markers"
+
+# Lines that are not NAME=value give their line number and length only: a key block (its last line padded
+# with "=", which looks like NAME=), the rest of a quoted value on later lines (an escaped quote does not
+# close it), a padded base64 line outside any block, a JSON line from a *.tfstate.
+blob="$(printf 'export TOKEN="sk_test_%s"\n-----BEGIN FAKE KEY-----\n%s\nQQQQQQQQ==\n-----END FAKE KEY-----\n  "password": "Q%s=Q",\nMULTI="-----BEGIN FAKE KEY-----\nQQQQtail=\n-----END FAKE KEY-----"\nAFTER=x\nJ="{\\"a\\":\\"Q\\"\nQQQQ==\n}"\n  QQQQQQQQ==\n' "$filler" "$filler" "$filler" | git -C "$copy" hash-object -w --stdin)"
+for i in 1 2; do
+  cmd="${commands[$i]}"; cmd="${cmd//<commit>:<path>/$blob}"
+  (cd "$copy" && bash -c "$cmd") > "$out/other$i" 2>&1
+done
+check "names: export prefix removed, names before and after the other lines" sh -c 'grep -qx TOKEN "$1" && grep -qx MULTI "$1" && grep -qx AFTER "$1"' _ "$out/other1"
+check "names: key block, JSON, quoted values and padding as line number and length" sh -c 'grep -qx "line 4: key block, 10 characters" "$1" && grep -qx "line 6: not NAME=value, 44 characters" "$1" && grep -qx "line 8: rest of a quoted value, 9 characters" "$1" && grep -qx "line 12: rest of a quoted value, 6 characters" "$1" && grep -qx "line 14: empty value or base64 padding, 12 characters" "$1"' _ "$out/other1"
+check "shape: export prefix removed, multi-line value flagged, value after it read" sh -c 'grep -qx "TOKEN: 32 characters, public type prefix sk_test_" "$1" && grep -qx "MULTI: 24 characters, no public type prefix, continued on later lines" "$1" && grep -qx "AFTER: 1 characters, no public type prefix" "$1"' _ "$out/other2"
+check "shape: key block, JSON, quoted values and padding as line number and length" sh -c 'grep -qx "line 4: key block, 10 characters" "$1" && grep -qx "line 6: not NAME=value, 44 characters" "$1" && grep -qx "line 8: rest of a quoted value, 9 characters" "$1" && grep -qx "line 12: rest of a quoted value, 6 characters" "$1" && grep -qx "line 14: empty value or base64 padding, 12 characters" "$1"' _ "$out/other2"
+check "names and shape: nothing of a line that is not NAME=value" sh -c '! grep -qE "Q|BEGIN|password|tail" "$1" "$2"' _ "$out/other1" "$out/other2"
 
 run_recipe 3 "$out/claims"; check "claims: the JWT's role is readable" grep -q '"role" *: *"service_role"' "$out/claims"
 check "claims: no secret value (no signature)" no_secret "$out/claims"

@@ -7,7 +7,7 @@ Privileged helpers (launch daemons installed by an app to run as root) are the c
 | Check | Flaw | Expected |
 |---|---|---|
 | Client validation | The helper accepts XPC connections without checking who is calling, or checks by PID or by path | Validate the caller's code signature with a code-signing requirement (team id and bundle id): `NSXPCConnection.setCodeSigningRequirement` (macOS 13+) or the audit token with `SecCode` APIs. A PID can be reused by another process: never authorize by PID |
-| Exposed operations | Generic methods ("run this command", "write this file", "change permissions on this path") | Narrow operations with validated parameters; paths restricted to the app's own data |
+| Exposed operations | Generic methods ("run this command", "write this file", "change permissions on this path") | Narrow operations with validated parameters; paths restricted to the app's own data. Running an allowed program with caller-chosen arguments is still "run this command" (`web-app.md`) |
 | Installation | Deprecated `SMJobBless` flows with weak requirements; helpers left installed after uninstall | `SMAppService` with matching signing requirements; clean uninstall |
 | Hardened Runtime and entitlements | Hardened Runtime off; `com.apple.security.cs.disable-library-validation`, `allow-dyld-environment-variables`, `get-task-allow` in release | Hardened Runtime on; only the entitlements the app needs; no debugging entitlements in release builds |
 | Library loading | Dylibs or plug-ins loaded from user-writable locations | Library validation; load only from the signed bundle |

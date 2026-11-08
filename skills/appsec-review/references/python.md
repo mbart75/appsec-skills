@@ -4,7 +4,7 @@ Sources: Bandit rules, Python documentation security considerations (`subprocess
 
 | Check | Flaw | Expected |
 |---|---|---|
-| Command execution | `subprocess.*(..., shell=True)`, `os.system`, `os.popen` with variables | Argument lists, `shell=False`; validated values; `timeout` |
+| Command execution | `subprocess.*(..., shell=True)`, `os.system`, `os.popen` with variables | Argument lists, `shell=False`; allow-listed subcommands and arguments, `--` before user values, none starting with `-` (an allowed program can still run commands: `web-app.md`); `timeout` |
 | Deserialization | `pickle.loads`, `marshal`, `shelve`, `yaml.load` with `Loader=yaml.Loader`/`FullLoader`/`UnsafeLoader`, `jsonpickle` on untrusted data | `json`; `yaml.safe_load`; signed payloads if objects must cross a trust boundary |
 | Code evaluation | `eval`, `exec`, `compile` on input | Explicit parsing; `ast.literal_eval` for literals only |
 | SQL | f-strings or `%` formatting into queries | Driver parameters (`cursor.execute(sql, params)`), ORM query API |

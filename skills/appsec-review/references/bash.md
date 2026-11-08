@@ -9,6 +9,7 @@ Sources: ShellCheck wiki, Google Shell Style Guide, CWE-78 and CWE-95.
 | Destructive commands | `rm -rf $DIR/*` with `DIR` possibly empty or unset (becomes `rm -rf /*`) | `set -u`, `"${DIR:?}"`, and an allow-list of target paths after resolving `..` and symlinks |
 | Path checks | `case "$path" in /safe/*)` on an unresolved path (`/safe/../../etc` matches) | Resolve first (`cd -- "$p" && pwd -P` or `realpath`), then compare to exact values |
 | Option injection | File names starting with `-` passed to commands | `--` before file arguments, or `./` prefix |
+| Allowed programs | An allow-list of programs while the caller chooses their options or configuration: `git -c alias.x='!cmd'` or `core.sshCommand`, `find -exec`, `tar --to-command`, `rsync -e`, `ssh -o ProxyCommand`, `xargs`, `env`, `awk 'BEGIN{system()}'` | Allow-list subcommands and the arguments each accepts; `--` before operands; refuse user values starting with `-` (`web-app.md`) |
 | Temporary files | Fixed names in `/tmp`, predictable names (symlink attacks) | `mktemp`, restrictive `umask`, cleanup with `trap` |
 | Error handling | Scripts continue after a failed step | `set -euo pipefail`, with care: a failing command substitution under `pipefail` can stop the script silently, so test guard conditions explicitly with clear messages |
 | Secrets | Tokens in arguments (visible in `ps`), `set -x` printing secrets, secrets in history | Pass through environment or files with restricted permissions; no tracing around secrets |
