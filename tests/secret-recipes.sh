@@ -93,6 +93,16 @@ check "shape: public markers shown" sh -c 'grep -qx "STRIPE: 32 characters, publ
 check "shape: other values get their length only" grep -qx 'PLAIN: 24 characters, no public type prefix' "$out/markers"
 check "shape: nothing after a marker, no comment line" sh -c '! grep -qE "Q|comment" "$1"' _ "$out/markers"
 
+# Lines that are not NAME=value (a key block, JSON from a *.tfstate) give their line number and length only.
+blob="$(printf 'export TOKEN="sk_test_%s"\n-----BEGIN FAKE PRIVATE KEY-----\n%s\n  "password": "Q%s=Q",\n' "$filler" "$filler" "$filler" | git -C "$copy" hash-object -w --stdin)"
+for i in 1 2; do
+  cmd="${commands[$i]}"; cmd="${cmd//<commit>:<path>/$blob}"
+  (cd "$copy" && bash -c "$cmd") > "$out/other$i" 2>&1
+done
+check "names: export prefix removed, other lines as line number and length" sh -c 'grep -qx TOKEN "$1" && grep -qx "line 3: not NAME=value, 24 characters" "$1"' _ "$out/other1"
+check "shape: export prefix removed, other lines as line number and length" sh -c 'grep -qx "TOKEN: 32 characters, public type prefix sk_test_" "$1" && grep -qx "line 4: not NAME=value, 44 characters" "$1"' _ "$out/other2"
+check "names and shape: nothing of a line that is not NAME=value" sh -c '! grep -qE "Q|BEGIN|password" "$1" "$2"' _ "$out/other1" "$out/other2"
+
 run_recipe 3 "$out/claims"; check "claims: the JWT's role is readable" grep -q '"role" *: *"service_role"' "$out/claims"
 check "claims: no secret value (no signature)" no_secret "$out/claims"
 

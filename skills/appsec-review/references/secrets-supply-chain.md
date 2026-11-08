@@ -30,13 +30,13 @@ Everything you read goes into your context, and so to the model provider: a secr
 3. **See which settings a secret file held**, names only:
 
    ```bash
-   git show <commit>:<path> | cut -d= -f1
+   git show <commit>:<path> | awk '/^[[:space:]]*(#|$)/ { next } /^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_.]*=/ { n = substr($0, 1, index($0, "=") - 1); sub(/^[[:space:]]*(export[[:space:]]+)?/, "", n); print n; next } { print "line " NR ": not NAME=value, " length($0) " characters" }'
    ```
 
 4. **See the shape of a value** (length, and its prefix only when it is a public type marker such as `AKIA`, `ghp_`, `sk_live_`, `sk_test_` or `xoxb-`) when you need it to judge test versus live. A marker names the kind of key and none of its secret part; the first characters of any other value (a password, a random token) are part of the secret, so this prints only its length:
 
    ```bash
-   git show <commit>:<path> | awk -F= '/^[[:space:]]*(#|$)/ { next } { v = substr($0, length($1) + 2); sub(/^"/, "", v); sub(/"$/, "", v); p = "no public type prefix"; if (match(v, /^(AKIA|ASIA|ghp_|gho_|ghs_|github_pat_|glpat-|sk_live_|sk_test_|pk_live_|pk_test_|rk_live_|rk_test_|whsec_|xox[abp]-|sk-ant-|sk-proj-|AIza|eyJ)/)) p = "public type prefix " substr(v, 1, RLENGTH); print $1 ": " length(v) " characters, " p }'
+   git show <commit>:<path> | awk '/^[[:space:]]*(#|$)/ { next } /^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_.]*=/ { i = index($0, "="); n = substr($0, 1, i - 1); sub(/^[[:space:]]*(export[[:space:]]+)?/, "", n); v = substr($0, i + 1); sub(/^"/, "", v); sub(/"$/, "", v); p = "no public type prefix"; if (match(v, /^(AKIA|ASIA|ghp_|gho_|ghs_|github_pat_|glpat-|sk_live_|sk_test_|pk_live_|pk_test_|rk_live_|rk_test_|whsec_|xox[abp]-|sk-ant-|sk-proj-|AIza|eyJ)/)) p = "public type prefix " substr(v, 1, RLENGTH); print n ": " length(v) " characters, " p; next } { print "line " NR ": not NAME=value, " length($0) " characters" }'
    ```
 
 5. **Read a token's claims, not the token**: a JWT's payload (its `role`, `ref`, `exp`) is not the credential, its signature is.
@@ -45,7 +45,7 @@ Everything you read goes into your context, and so to the model provider: a secr
    grep -o 'eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*' <file> | head -n 1 | cut -d. -f2 | python3 -I -c 'import base64, sys; p = sys.stdin.read().strip(); print(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4)).decode())'
    ```
 
-Files that exist to hold secrets (`.env*`, `*.pem`, `*.key`, `id_rsa*`, `*.tfvars`, `*.tfstate`, credential stores) are read this way too, in the working tree as in history. Source code is read in full as usual; when a hard-coded secret sits in it, report its file and line and quote the line with the value replaced by `[REDACTED]`.
+Files that exist to hold secrets (`.env*`, `*.pem`, `*.key`, `id_rsa*`, `*.tfvars`, `*.tfstate`, credential stores) are read this way too, in the working tree as in history. Commands 3 and 4 read `NAME=value` lines; any other line (a key block, JSON, YAML) comes out as its line number and length only. For a JSON file such as a `*.tfstate`, list its key paths without values: `jq -r 'paths(scalars) | map(tostring) | join(".")' <file>`. Source code is read in full as usual; when a hard-coded secret sits in it, report its file and line and quote the line with the value replaced by `[REDACTED]`.
 
 Judging a match: decode before rating. A JWT's payload is base64: read its `role` or scope. A public type marker often tells test from live (`pk_` versus `sk_`, `_test_` versus `_live_`); in the report, quote the marker, never more of the value. An example value from documentation is not a secret.
 

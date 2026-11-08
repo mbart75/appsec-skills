@@ -18,7 +18,7 @@ An injection exists when attacker-controlled data reaches an interpreter without
 
 "Sanitising input" is not the defence for XSS: encoding at output, for the context where the data lands, is.
 
-**An allow-list of programs is not a boundary** when the attacker controls their arguments, environment or configuration: many programs run commands of their own. `git -c alias.x='!cmd'`, `-c core.pager=…`, `-c core.sshCommand=…` (and `GIT_SSH_COMMAND`, or the `.git/config` of a repository the attacker wrote); `find -exec`; `tar --to-command`, `--checkpoint-action=exec=…`; `rsync -e`; `ssh -o ProxyCommand=…`; `xargs`, `env`, `timeout` and `nice`, which run their argument; `awk 'BEGIN{system("…")}'`. Expected: an allow-list of subcommands and of the arguments each accepts, `--` before user-supplied operands, and refusal of any user value that starts with `-`. GTFOBins lists these behaviours per program.
+**An allow-list of programs is not a boundary** when the attacker controls their arguments, environment or configuration: many programs run commands of their own. `git -c alias.x='!cmd'`, `-c core.pager=...`, `-c core.sshCommand=...`, `-c core.fsmonitor=...`, `--upload-pack=...`, `ext::` URLs (and `GIT_SSH_COMMAND`, or the `.git/config` of a repository the attacker wrote); `find -exec`; `tar --to-command`, `--checkpoint-action=exec=...`; `rsync -e`; `ssh -o ProxyCommand=...`; `xargs`, `env`, `timeout` and `nice`, which run their argument; `awk 'BEGIN{system("...")}'`. Expected: an allow-list of subcommands and of the arguments each accepts, `--` before user-supplied operands, and refusal of any user value that starts with `-`. GTFOBins lists these behaviours per program.
 
 ## Server-side request forgery
 
