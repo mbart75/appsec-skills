@@ -93,15 +93,18 @@ check "shape: public markers shown" sh -c 'grep -qx "STRIPE: 32 characters, publ
 check "shape: other values get their length only" grep -qx 'PLAIN: 24 characters, no public type prefix' "$out/markers"
 check "shape: nothing after a marker, no comment line" sh -c '! grep -qE "Q|comment" "$1"' _ "$out/markers"
 
-# Lines that are not NAME=value (a key block, JSON from a *.tfstate) give their line number and length only.
-blob="$(printf 'export TOKEN="sk_test_%s"\n-----BEGIN FAKE PRIVATE KEY-----\n%s\n  "password": "Q%s=Q",\n' "$filler" "$filler" "$filler" | git -C "$copy" hash-object -w --stdin)"
+# Lines that are not NAME=value give their line number and length only: a key block (its last line padded
+# with "=", which looks like NAME=), the rest of a quoted value on later lines, a JSON line from a *.tfstate.
+blob="$(printf 'export TOKEN="sk_test_%s"\n-----BEGIN FAKE KEY-----\n%s\nQQQQQQQQ==\n-----END FAKE KEY-----\n  "password": "Q%s=Q",\nMULTI="-----BEGIN FAKE KEY-----\nQQQQtail=\n-----END FAKE KEY-----"\nAFTER=x\n' "$filler" "$filler" "$filler" | git -C "$copy" hash-object -w --stdin)"
 for i in 1 2; do
   cmd="${commands[$i]}"; cmd="${cmd//<commit>:<path>/$blob}"
   (cd "$copy" && bash -c "$cmd") > "$out/other$i" 2>&1
 done
-check "names: export prefix removed, other lines as line number and length" sh -c 'grep -qx TOKEN "$1" && grep -qx "line 3: not NAME=value, 24 characters" "$1"' _ "$out/other1"
-check "shape: export prefix removed, other lines as line number and length" sh -c 'grep -qx "TOKEN: 32 characters, public type prefix sk_test_" "$1" && grep -qx "line 4: not NAME=value, 44 characters" "$1"' _ "$out/other2"
-check "names and shape: nothing of a line that is not NAME=value" sh -c '! grep -qE "Q|BEGIN|password" "$1" "$2"' _ "$out/other1" "$out/other2"
+check "names: export prefix removed, names before and after the other lines" sh -c 'grep -qx TOKEN "$1" && grep -qx MULTI "$1" && grep -qx AFTER "$1"' _ "$out/other1"
+check "names: key block, JSON and quoted value as line number and length" sh -c 'grep -qx "line 4: key block, 10 characters" "$1" && grep -qx "line 6: not NAME=value, 44 characters" "$1" && grep -qx "line 8: rest of a quoted value, 9 characters" "$1"' _ "$out/other1"
+check "shape: export prefix removed, multi-line value flagged, value after it read" sh -c 'grep -qx "TOKEN: 32 characters, public type prefix sk_test_" "$1" && grep -qx "MULTI: 24 characters, no public type prefix, continued on later lines" "$1" && grep -qx "AFTER: 1 characters, no public type prefix" "$1"' _ "$out/other2"
+check "shape: key block, JSON and quoted value as line number and length" sh -c 'grep -qx "line 4: key block, 10 characters" "$1" && grep -qx "line 6: not NAME=value, 44 characters" "$1" && grep -qx "line 8: rest of a quoted value, 9 characters" "$1"' _ "$out/other2"
+check "names and shape: nothing of a line that is not NAME=value" sh -c '! grep -qE "Q|BEGIN|password|tail" "$1" "$2"' _ "$out/other1" "$out/other2"
 
 run_recipe 3 "$out/claims"; check "claims: the JWT's role is readable" grep -q '"role" *: *"service_role"' "$out/claims"
 check "claims: no secret value (no signature)" no_secret "$out/claims"
