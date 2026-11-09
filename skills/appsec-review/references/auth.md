@@ -37,7 +37,7 @@ First question: **is authentication hand-written?** A managed provider (Supabase
 
 ## MFA and privileged accounts
 
-- Admin and staff accounts should require MFA. Report its absence as a hardening finding, with severity depending on what admins can do.
+- Admin and staff accounts should require MFA. Report its absence as a hardening finding, rated by `SKILL.md` step 5: Low or Info, Medium when step 4 names a reachable flaw it would make much worse (stolen admin passwords, no login rate limit).
 - The developers' own accounts (code host, cloud, database, domain registrar, CI) are the real keys to the application: recommend MFA there in pre-launch mode.
 
 ## How to verify
