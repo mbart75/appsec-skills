@@ -101,6 +101,7 @@ Give this file to any AI coding assistant with this instruction:
 > Never weaken a security control to make a test or a build pass. If a fix needs a
 > design change or a decision, stop and ask instead of guessing. If you believe a
 > finding is wrong, set its Status to `false-positive` with your reason, do not skip it silently.
+> Never set a Status to `accepted-risk` and never add an acceptance of a finding's risk: only a person decides that.
 > When all findings are handled, run appsec-review in verify mode with this file.
 
 <live target only>
@@ -132,4 +133,4 @@ Give this file to any AI coding assistant with this instruction:
 | `accepted-risk` | a person only | Kept on purpose; the reason and who accepted it are written next to it |
 | `false-positive` | anyone, with the reason | Not a real issue; `verify` re-checks the reason |
 
-`verify` mode keeps the IDs, re-checks every finding, updates the statuses, and adds new findings with new IDs only if they come from the fixes.
+`verify` mode keeps the IDs, re-checks every finding, updates the statuses, and adds new findings with new IDs only if they come from the fixes. An acceptance added or widened since the report's Commit never closes a finding: the finding stays `open`, quoting it, until the code is fixed or a person sets `accepted-risk`.

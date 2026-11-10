@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`appsec-review`: an acceptance written after a report does not close its findings in `verify` mode.** Without this, whoever fixes a report could leave the code as it is, add a line to `SECURITY.md` saying the risk is kept on purpose, and the `verify` run would move the finding to Accepted risks.
+  - In `verify` mode, the base of 5.2 is the Commit of the report under verification. An acceptance added or widened since then, including those the fixes added, never closes a finding and never moves it to Accepted risks. The status follows the code alone: the finding stays `open` until the code fixes it, and it quotes the added acceptance so that a person can decide.
+  - When the report has no Commit that the repository still contains (uncommitted changes, a date only, history rewritten), an acceptance counts only if the report already records it. Any other is treated as added.
+  - Only a person sets `accepted-risk`, with the reason and who accepted it next to the finding. The review never sets it. It resets to `open` an `accepted-risk` that does not give both. It keeps one that gives both, quotes them, never counts it as `fixed`, and says in the verdict that it cannot confirm who set it: the fixing agent edits the same file.
+  - An acceptance already there at the report's Commit and still there is handled as before.
+  - `report-template.md` follows: its status values, and the hand-off now tells the fixing agent never to set `accepted-risk` nor add an acceptance. No other rule changes.
+
 - **`appsec-review`: two holes in the entry below closed.**
   - **An acceptance added by the change under review is not an acceptance.** Without this, a pull request could add a dangerous workflow and, in the same change, a line in `SECURITY.md` saying the risk is known and kept on purpose, and step 5.2 would rate it Info.
     - When the review covers a change (a pull request, a diff, a branch, uncommitted changes), an acceptance counts only for what it already states on the base of the comparison, and only for a risk already present there.
