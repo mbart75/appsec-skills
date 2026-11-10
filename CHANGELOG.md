@@ -8,6 +8,8 @@
   - Only a person sets `accepted-risk`, with the reason and who accepted it next to the finding. The review never sets it. It resets to `open` an `accepted-risk` that does not give both. It keeps one that gives both, quotes them, never counts it as `fixed`, and says in the verdict that it cannot confirm who set it: the fixing agent edits the same file.
   - An acceptance already there at the report's Commit and still there is handled as before.
   - `report-template.md` follows: its status values, and the hand-off now tells the fixing agent never to set `accepted-risk` nor add an acceptance. No other rule changes.
+  - Measured (bench v7, 2026-11-10, same harness and judge as v6, 2 runs, none invalid): home-made verify case outside `bench/`, a previous report with a Critical `pull_request_target` finding and a "fix" commit that only adds an acceptance to `SECURITY.md`. In 2 runs of 2 the finding stays `open` and Critical, the acceptance is quoted as added after the report, and Accepted risks lists no entry; both runs still add a note there that the acceptance is not counted. No false positive.
+    - Not measured: an `accepted-risk` written in the report by the fixing agent, a report without a usable Commit, a widened acceptance.
 
 - **`appsec-review`: two holes in the entry below closed.**
   - **An acceptance added by the change under review is not an acceptance.** Without this, a pull request could add a dangerous workflow and, in the same change, a line in `SECURITY.md` saying the risk is known and kept on purpose, and step 5.2 would rate it Info.
