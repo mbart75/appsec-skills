@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## 0.8.0 (2026-11-11)
+
+Rating rules of `appsec-review` reworked (entries below, from bench v2 to the two held-out tests). The rules were tuned on bench v1 and v2, then checked on five public repositories never used for tuning. Reviewed model Claude Haiku 5.5, two runs per repository and arm, one Claude Sonnet 5.5 judge per run, blind to the arm, keys frozen (SHA-256) before the first run. Evidence kept locally, summarised here.
+
+- **Held-out test v1** (2026-11-10, `main` at `6720efc` against 0.7.9): VAmPI, DVGA, linkding.
+  - VAmPI (9 flaws): 9 and 7 + 1 partial, against 9 and 9. DVGA (20): 13 and 14, against 14 and 13.
+  - linkding (production app): found a real argument injection into the snapshot tool and a stored XSS that 0.7.9 missed in both runs; over-ratings 2 and 3, against 2 and 0.
+  - Failure that led to the acceptance entry below: one VAmPI run put two reachable flaws that hit users (account enumeration, ReDoS) in Accepted risks, because the app calls itself deliberately vulnerable.
+- **Held-out test v2** (2026-11-11, PR #25 at `776f8bc` against 0.7.9): dvws-node, datasette.
+  - dvws-node (60 flaws, 34 at Medium or more): 52 and 54 found, against 49 and 52; Medium-or-more flaws missed: 1, against 2; no false positive in any arm.
+  - The self-description "deliberately vulnerable" was refused as an acceptance in every run; no flaw was lowered for it.
+  - Two reachable flaws keyed Medium or more were rated Low, one per run: a self-escalation to administrator through the signed profile export ("other findings already give the same result"), which led to the "rated on its own" entry below (not re-measured), and an unauthenticated XPath injection bounded to a configuration file (key minimum arguable).
+  - datasette (production app): Medium-or-more findings 4 and 4, none false; over-ratings 2 and 0, against 1 and 0.
+- **Known limits**:
+  - Over-rating remains, in this release as in 0.7.9: CI workflow and hardening findings (mutable action tags, `--no-sandbox` browser), an off-by-default option rated for the deployments that turn it on, a latent flaw raised to Medium by the "single added call" clause.
+  - A reachable flaw that the review judges bounded can still come out Low.
+  - The written-acceptance rule was not measured on a real written acceptance: no held-out run produced an Accepted risks entry. Its guards (change under review, `verify` mode, risks borne by others) were measured on home-made cases only.
+  - A review costs about 1.5 times as much as with 0.7.9 (held-out v2: 3.37 against 2.16 USD for 4 runs).
+  - Two runs per cell: no confidence interval.
+
 - **`appsec-review`: each finding is rated on its own.** On a public, deliberately vulnerable app never seen before (dvws-node, held-out test v2, 2026-11-11), one review rated a self-escalation to administrator Low because "other findings already give the same result". Fixing one finding does not fix the other, so step 5 now says: rate each finding as if it were the only one; another finding reaching the same outcome never lowers its rating.
   - This sentence can only raise ratings. Not re-measured: the repositories of the held-out tests are now used.
 
