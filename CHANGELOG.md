@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`appsec-review`: Accepted risks says "None" and nothing else when nothing is accepted.** In bench v7 (`verify` mode, 2026-11-10), both runs rightly kept the finding `open` and quoted the acceptance added after the report in it, then still wrote under Accepted risks, after "None", a note that this acceptance is not counted.
+  - `report-template.md`, Accepted risks line: "None" with nothing after it; an acceptance that step 5.2 or `verify` does not count (for example one added or widened by the change under review or after the report, a risk others bear, a false premise) is quoted in its finding only. Step 5 of `SKILL.md`, `verify` paragraph: Accepted risks does not mention the added acceptance.
+  - Wording only: no rating rule changes. Not re-measured.
+
 - **`appsec-review`: the secret-file recipes read the names after a quoted value with a trailing comment.** In commands 3 and 4 of `references/secrets-supply-chain.md`, a line such as `A="abc" # note` was taken for a value continued on the next lines, which then came out as "rest of a quoted value" instead of their names. The safe direction, but names were lost.
   - A closing quote followed by spaces and `#` now ends the value, in both commands, by the same code. A `#` inside the quotes (`A="a#b"`) or with no closing quote before it (`A="abc # note`, a real continuation) does not, and a backslash escapes a quote only between double quotes (`A='x\'y' # note` goes on to the next lines, as in a shell), so no value or start of a value is printed.
   - `tests/secret-recipes.sh` covers `A="…" # note`, `A='…' # note`, `A="…#…"` and a real continuation followed by a `NAME=value` line, `A='…\'…' # note`, and checks that no value, comment or continued line appears in either output.
