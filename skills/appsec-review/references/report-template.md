@@ -85,7 +85,7 @@ Confidence, separately: **High** (code path read end to end), **Medium** (likely
 
 ## Accepted risks
 
-- <Info · a risk the maintainers alone bear · accepted in `<file>:<line>` (quote the acceptance in a few words) · would rise if <the condition>. "None" when the project accepts nothing in writing. Entries here have no ID and no status and are not counted in the Verdict table; Info records the decision, not the size of the risk. The review never sets `accepted-risk`, which records a person's decision on a finding.>
+- <Info · a risk the maintainers alone bear · accepted in `<file>:<line>` (quote the acceptance in a few words) · would rise if <the condition>. "None" when no risk is moved here, with nothing after it: an acceptance that step 5.2 or `verify` does not count (for example one added or widened by the change under review or after the report, a risk others bear, a false premise) is quoted in its finding only, never mentioned in this section. Entries here have no ID and no status and are not counted in the Verdict table; Info records the decision, not the size of the risk. The review never sets `accepted-risk`, which records a person's decision on a finding.>
 
 ## What is already done well
 
