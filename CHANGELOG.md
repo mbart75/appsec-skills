@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`appsec-review`: Accepted risks says "None" and nothing else when nothing is accepted.** In bench v7 (`verify` mode, 2026-11-10), both runs rightly kept the finding `open` and quoted the acceptance added after the report in it, then still wrote under Accepted risks, after "None", a note that this acceptance is not counted.
+  - `report-template.md`, Accepted risks line: "None" with nothing after it; an acceptance that step 5.2 or `verify` does not count (for example one added or widened by the change under review or after the report, a risk others bear, a false premise) is quoted in its finding only. Step 5 of `SKILL.md`, `verify` paragraph: Accepted risks does not mention the added acceptance.
+  - Wording only: no rating rule changes. Not re-measured.
+
 ## 0.8.0 (2026-11-11)
 
 Rating rules of `appsec-review` reworked (entries below, from bench v2 to the two held-out tests). The rules were tuned on bench v1 and v2, then checked on five public repositories never used for tuning. Reviewed model Claude Haiku 5.5, two runs per repository and arm, one Claude Sonnet 5.5 judge per run, blind to the arm, keys frozen (SHA-256) before the first run. Evidence kept locally, summarised here.
