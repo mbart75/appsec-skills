@@ -107,6 +107,26 @@ check "shape: export prefix removed, multi-line value flagged, value after it re
 check "shape: key block, JSON, quoted values and padding as line number and length" sh -c 'grep -qx "line 4: key block, 10 characters" "$1" && grep -qx "line 6: not NAME=value, 44 characters" "$1" && grep -qx "line 8: rest of a quoted value, 9 characters" "$1" && grep -qx "line 12: rest of a quoted value, 6 characters" "$1" && grep -qx "line 14: empty value or base64 padding, 12 characters" "$1"' _ "$out/other2"
 check "names and shape: nothing of a line that is not NAME=value" sh -c '! grep -qE "Q|BEGIN|password|tail" "$1" "$2"' _ "$out/other1" "$out/other2"
 
+# A closing quote followed by spaces and "#" ends the value: the names after it are read. A "#" inside the
+# quotes, or with no closing quote before it, does not: the value goes on, and its later lines (even one that
+# looks like NAME=value) give their line number and length only.
+blob="$(printf 'A="QQQQ" # note\nB='"'"'QQQQ'"'"' # note\nC="Q#Q"\nD="QQQQ # note\nHIDDEN=QQQQ\nQQ"\nAFTER=z\n' | git -C "$copy" hash-object -w --stdin)"
+for i in 1 2; do
+  cmd="${commands[$i]}"; cmd="${cmd//<commit>:<path>/$blob}"
+  (cd "$copy" && bash -c "$cmd") > "$out/comment$i" 2>&1
+done
+check "names: a trailing comment closes a quoted value, a quoted # does not" sh -c 'grep -qx A "$1" && grep -qx B "$1" && grep -qx C "$1" && grep -qx D "$1" && grep -qx AFTER "$1" && grep -qx "line 5: rest of a quoted value, 11 characters" "$1" && grep -qx "line 6: rest of a quoted value, 3 characters" "$1"' _ "$out/comment1"
+check "shape: a trailing comment is not part of the value, a quoted # is" sh -c 'grep -qx "A: 4 characters, no public type prefix" "$1" && grep -qx "B: 4 characters, no public type prefix" "$1" && grep -qx "C: 3 characters, no public type prefix" "$1" && grep -qx "D: 11 characters, no public type prefix, continued on later lines" "$1" && grep -qx "line 5: rest of a quoted value, 11 characters" "$1" && grep -qx "line 6: rest of a quoted value, 3 characters" "$1" && grep -qx "AFTER: 1 characters, no public type prefix" "$1"' _ "$out/comment2"
+check "names and shape: no value, no comment, nothing of a continued line" sh -c '! grep -qE "Q|note|HIDDEN" "$1" "$2"' _ "$out/comment1" "$out/comment2"
+# Between single quotes a backslash escapes nothing: in A='Q\'Q' # note the quote after the backslash closes
+# the value and the next one opens a new one, which goes on to the following lines.
+blob="$(printf 'A=%sQ\\%sQ%s # note\nHIDDEN=QQQQ\n' "'" "'" "'" | git -C "$copy" hash-object -w --stdin)"
+for i in 1 2; do
+  cmd="${commands[$i]}"; cmd="${cmd//<commit>:<path>/$blob}"
+  (cd "$copy" && bash -c "$cmd") > "$out/single$i" 2>&1
+done
+check "names and shape: no backslash escape between single quotes" sh -c 'grep -qx "line 2: rest of a quoted value, 11 characters" "$1" && grep -qx "line 2: rest of a quoted value, 11 characters" "$2" && ! grep -qE "Q|note|HIDDEN" "$1" "$2"' _ "$out/single1" "$out/single2"
+
 run_recipe 3 "$out/claims"; check "claims: the JWT's role is readable" grep -q '"role" *: *"service_role"' "$out/claims"
 check "claims: no secret value (no signature)" no_secret "$out/claims"
 

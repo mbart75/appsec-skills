@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`appsec-review`: the secret-file recipes read the names after a quoted value with a trailing comment.** In commands 3 and 4 of `references/secrets-supply-chain.md`, a line such as `A="abc" # note` was taken for a value continued on the next lines, which then came out as "rest of a quoted value" instead of their names. The safe direction, but names were lost.
+  - A closing quote followed by spaces and `#` now ends the value, in both commands, by the same code. A `#` inside the quotes (`A="a#b"`) or with no closing quote before it (`A="abc # note`, a real continuation) does not, and a backslash escapes a quote only between double quotes (`A='x\'y' # note` goes on to the next lines, as in a shell), so no value or start of a value is printed.
+  - `tests/secret-recipes.sh` covers `A="…" # note`, `A='…' # note`, `A="…#…"` and a real continuation followed by a `NAME=value` line, `A='…\'…' # note`, and checks that no value, comment or continued line appears in either output.
+  - Not re-measured on the bench: the recipes are checked by `tests/secret-recipes.sh`.
+
 ## 0.8.0 (2026-11-11)
 
 Rating rules of `appsec-review` reworked (entries below, from bench v2 to the two held-out tests). The rules were tuned on bench v1 and v2, then checked on five public repositories never used for tuning. Reviewed model Claude Haiku 5.5, two runs per repository and arm, one Claude Sonnet 5.5 judge per run, blind to the arm, keys frozen (SHA-256) before the first run. Evidence kept locally, summarised here.
