@@ -90,9 +90,10 @@ One Markdown file, self-contained, readable by a person and by any model. Fixed 
    - Status: `open`, `fixed`, `accepted-risk` (with the reason and who accepted), `false-positive` (with the reason)
    - In `plain` reading level, an extra "In plain words" paragraph
 5. **Open questions**: what could not be verified without context, kept apart from findings.
-6. **What is already done well**.
-7. **Hand-off**: instructions for the AI that will fix the findings. Work in severity order, one finding per commit, never weaken a control to make something pass, apply the "Done when" check, update the status field in this file, then run `appsec-review` in `verify` mode.
-8. **Appendix**: scanner results and their triage (confirmed, false positive with reason).
+6. **Accepted risks**: risks the project's maintainers accepted in writing and alone bear, one line each: Info, where the acceptance is written (`file:line`, quoted in a few words), and the condition that would make it rise. Entries have no ID and no status and are not counted in the Verdict table; Info records the decision, not the size of the risk. "None" when there is no entry. The review never sets `accepted-risk`, which records a person's decision on a finding.
+7. **What is already done well**.
+8. **Hand-off**: instructions for the AI that will fix the findings. Work in severity order, one finding per commit, never weaken a control to make something pass, apply the "Done when" check, update the status field in this file, then run `appsec-review` in `verify` mode.
+9. **Appendix**: scanner results and their triage (confirmed, false positive with reason).
 
 The report is written outside the repository by default (principle 7), at a location the user or project instructions can override.
 
